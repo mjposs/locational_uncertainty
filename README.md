@@ -7,7 +7,7 @@ This repository contains the algorithms used to solve robust optimization proble
 The following algorithms are available:
 * The exact branch-and-cut algorithm  described in Section 4 and Algorithm 1 of the manuscript, see function `exact()`
 * A heuristic algorithm based on barycenters, described in Section 5 and Algorithm 2 of the manuscript, see function `heuristic_det()`
-* A heuristic algorithm based on pair-wised worst-case distances, described in Section 5 and Algorithm 3 of the manuscript, see function `heuristic_dmax()`
+* A heuristic algorithm based on pairwise worst-case distances, described in Section 5 and Algorithm 3 of the manuscript, see function `heuristic_dmax()`
 * A heuristic algorithm based on the two-stage reformulation and affine decision reules approximation proposed by [ZRRH21](https://doi.org/10.1287/ijoc.2020.1025 "Robust optimization for models with uncertain second-order cone and semidefinite programming constraints.") and described in Appendix H of the manuscript see function `heuristic_adr`
 
 ## Guide
