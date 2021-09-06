@@ -2,7 +2,7 @@
 
 This repository contains the algorithms used to solve robust optimization problems studied in the paper
 
-*Marin Bougeret, Jérémy Omer, and Michael Poss: Optimization problems in graphs with locational uncertainty. Available at XXXXXX*
+*Marin Bougeret, Jérémy Omer, and Michael Poss: Optimization problems in graphs with locational uncertainty. Available at HAL(https://hal.archives-ouvertes.fr/hal-03331166)*
 
 The following algorithms are available:
 * The exact branch-and-cut algorithm  described in Section 4 and Algorithm 1 of the manuscript, see function `exact()`
