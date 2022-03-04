@@ -12,12 +12,13 @@ The following algorithms are available:
 
 ## Guide
 
-The repository contains 5 julia files:
+The repository contains the following Julia files:
 * **algo.jl**: Contains all algorithms
 * **data.jl**: Contains functions parsing data files and creating instances using generators
 * **process_data.jl**: Contains functions parsing result files to create the plots used in the manuscript
 * **run.jl**: Read/Create the instances and calls the algorithms
 * **X_and_cost.jl**: Contains the functions creating the constraints specific to each application `build_IP_model()`, and the computation of the objective function `c()`
+* **dmax_study.jl**: the functions therein were used for the search of approximation ratios, they are not relevant for the actual solution of locational uncertainty problems
 
 The code currently contains two applications: 
 * A Steiner Tree problem.

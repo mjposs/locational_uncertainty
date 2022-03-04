@@ -7,6 +7,7 @@ using Random, MultivariateStats
 const Optimizer = "CPLEX"  # ARGS[1]
 if Optimizer == "Gurobi"
     @info "Using Gurobi"
+    ENV["JULIA_DEBUG"] = Main
     # avoids checking the license everytime a model is created
     using Gurobi
     const GUROBI_ENV = Gurobi.Env()
@@ -36,14 +37,23 @@ function printres(time, res, seed, algo, data::Data_STP)
     close(f)
 end
 
-#------
-
 function printres(time, res, seed, algo, data::Data_UFLP)
     f = open("res/UFLP/$(algo).txt","a")
     if algo[1] == 'P'
         algo = algo[4:end]
     end
     s = string("$(data.instance) $(data.n) $(data.m) $(data.nU) $(length(data.I)) $(@sprintf("%.2f",time))  $(@sprintf("%.2f",res[1]))  $(@sprintf("%.2f",res[2]))  $(@sprintf("%.2f",res[3]))  $(seed)\n")
+    write(f,s)
+    println(s)
+    close(f)
+end
+
+function printres(time, res, seed, algo, data::Data_clustering)
+    f = open("res/clustering/$(algo).txt","a")
+    if algo[1] == 'P'
+        algo = algo[4:end]
+    end
+    s = string("$(data.instance) $(data.K) $(data.n) $(@sprintf("%.2f",time))  $(@sprintf("%.2f",res[1]))  $(@sprintf("%.2f",res[2]))  $(@sprintf("%.2f",res[3]))  $(seed)\n")
     write(f,s)
     println(s)
     close(f)
@@ -115,6 +125,47 @@ function run_UFLP()
 	    printres(time_worst, res_worst, seed, "worst", data);
 	    printres(time_center, res_center, seed, "center", data);
 	end
+end
+
+function run_synthetic_clustering(n_per_cluster::Int64, uncertainty_width::Float64)
+    # Synthetic datasets of De Carvalho and Lechevallier (2009)
+    # They propose two configurations
+    # configuration 1:
+    μ1 = [28 ; 62 ; 50 ; 57];
+    μ2  = [23 ; 30; 15 ; 48];
+    σ1² = [144 ; 81 ; 49 ; 16];
+    σ2² = [16 ; 49 ; 81 ; 144];
+    ρ12 = [0.8 ; 0.7 ; 0.6 ; 0.9];
+    # in the publication, they test 100 times with each of interval_length
+    # among 1, 4, 9, 14 and 19
+    data_synthetic_config1 =
+        build_gaussian_clustering(n_per_cluster, uncertainty_width, μ1, μ2, σ1², σ2², ρ12);
+
+    # configuration 2:
+    μ1 = [28 ; 62 ; 50 ; 57];
+    μ2  = [23 ; 30; 15 ; 37];
+    σ1² = [100 ; 81 ; 100 ; 81];
+    σ2² = [9 ; 16 ; 16 ; 9];
+    ρ12 = [0.7 ; 0.8 ; 0.7 ; 0.8];
+    data_synthetic_config2 = build_gaussian_clustering(n_per_cluster, uncertainty_width, μ1, μ2, σ1², σ2², ρ12);
+
+    # configuration 3:
+    μ1 = [50 ; 50];
+    μ2  = [30 ; 30];
+    data_synthetic_config3 = build_together_clustering(n_per_cluster, uncertainty_width, μ1, μ2);
+
+    return data_synthetic_config1, data_synthetic_config2, data_synthetic_config3;
+end
+
+function compare_all_methods(data::Data)
+    seed = 1;
+    time_exact = @elapsed res_exact = exact(data);
+    time_worst = @elapsed res_worst = heuristic_dmax(data);
+    time_center = @elapsed res_center = heuristic_det(data);
+
+    printres(time_exact, res_exact, seed, "exact", data);
+    printres(time_worst, res_worst, seed, "worst", data);
+    printres(time_center, res_center, seed, "center", data);
 end
 
 #------
