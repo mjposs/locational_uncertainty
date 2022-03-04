@@ -470,8 +470,6 @@ end
 ######################################
 # ENUMERATE ALL GRAPHS WITH N VERTICES
 ######################################
-using LightGraphs
-
 """
 enum_connected_graphs(n,(i,j),F, cur_deg, prev_deg)
 

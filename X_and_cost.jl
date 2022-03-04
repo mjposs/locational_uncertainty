@@ -58,7 +58,7 @@ function c(x_val, data::Data_STP)
    root = data.T[1]
    dfs = dfs_tree(g, root)
    order = reverse(topological_sort_by_dfs(dfs))
-   order = order[ max.( LightGraphs.degree(g)[order].>1 , order.==root ) ] # disregard leafs and isolated vertices (but keep the root)
+   order = order[ max.(Graphs.degree(g)[order].>1 , order.==root ) ] # disregard leafs and isolated vertices (but keep the root)
    for i in order, k in 1:data.nU
       indmax[i,k] = []
       for j in outneighbors(dfs,i)
@@ -160,7 +160,7 @@ function build_IP_model(data::Data_clustering)
    n_per_cluster = floor(Int64, n/K);
    model = create_model(data, 1);
    # x_ij=1 iff i and j are in the same cluster
-   @variable(model, x[(i,j) in E, Bin)
+   @variable(model, x[(i,j) in E], Bin)
    # z_ii=1 iff vertex i is the leader of a cluster (meaning it has smallest index in the cluster); z_ij=1 iff j is in the cluster lead by i  
    @variable(model, z[i in V, j in V ; i <= j], Bin)
    # objective value in the epigraphic formulation

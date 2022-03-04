@@ -1,8 +1,9 @@
-"Cutting-plane algorithm to solve the problem exactly."
+"""Cutting-plane algorithm to solve the problem exactly."""
 
 function exact(data)
    # build the initial relaxed IP where there is no cut to compute the worst-case cost of the solution tree
    model = build_IP_model(data)
+   n = data.n
    E = data.E
 
    # callback function that finds the worst-case cost of the current solution and builds the corresponding "lazy" cut
@@ -16,7 +17,7 @@ function exact(data)
          "STP"
 
          # get the worst-case position of all the vertices by solving the separation problem
-         sep_val, u = c(x_val, data, cb_data, model)
+         sep_val, u = c(x_val, data)
 
          # build the corresponding optimality cut
          con = @build_constraint(model[:ω] ≥ sum(data.d[e[1], u[e[1]], e[2], u[e[2]]] * model[:x][e] for e in E));
@@ -69,7 +70,7 @@ function exact(data)
          sep_val, u = c(g, data)
 
          # build the corresponding optimality cut
-         con = @build_constraint(model[:ω] ≥ sum(d²[i,j][u[i],u[j]] * model[:x][(i,j)] for (i,j) in E));
+         con = @build_constraint(model[:ω] ≥ sum(data.d²[i,j][u[i],u[j]] * model[:x][(i,j)] for (i,j) in E));
       end
       # add the optimality cut if it is not satisfied by the current solution
       if sep_val > ω_val + ϵ
@@ -99,15 +100,16 @@ end
 function heuristic_dmax(data)
    typeof(data) == Data_STP && @info "max-cost heuristic for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
    typeof(data) == Data_UFLP && @info "max-cost heuristic for $(data.instance) with |I|=$(length(data.I)), |J|=$(length(data.J)), p=$(data.p)"
-   E = data.E
-   c_max = Dict()
-   for e in E c_max[e] = maximum(data.d[e[1],:,e[2],:]) end
+   E = data.E;
+   n = data.n;
    model = build_IP_model(data)
 
    # only the objective is modified in the heuristics
    if typeof(data) == Data_clustering
-      @objective(model, Min, sum(maximum(d²[i,j])*model[:x][(i,j)] for (i,j) in E));
+      @objective(model, Min, sum(maximum(data.d²[i,j])*model[:x][(i,j)] for (i,j) in E));
    else
+      c_max = Dict()
+      for e in E c_max[e] = maximum(data.d[e[1],:,e[2],:]) end
       @objective(model, Min, sum(c_max[e]*model[:x][e] for e in E))
    end
    optimize!(model)
@@ -124,9 +126,9 @@ function heuristic_dmax(data)
       y_val = Dict()
       for j in data.J y_val[j] = value(model[:y][j]) end
       truecost, u = c(x_val, y_val, data)
-   elseif typeof(data) = Data_clustering
+   elseif typeof(data) == Data_clustering
       g = SimpleGraph(n)
-      for i in V, j in i+1:n
+      for e ∈ E
          if x_val[e] > ϵ
             add_edge!(g, e[1], e[2])
          end
@@ -154,6 +156,7 @@ function heuristic_det(data)
    # initialize the model
    model = build_IP_model(data)
    E = data.E
+   n = data.n;
 
    # only the objective is modified in the heuristics
    @objective(model, Min, sum(data.d⁰[e] * model[:x][e] for e in E))
@@ -172,8 +175,6 @@ function heuristic_det(data)
       for j in data.J y_val[j] = value(model[:y][j]) end
       truecost, u = c(x_val, y_val, data)
    elseif typeof(data) == Data_clustering
-      n = data.n;
-      V = 1:n;
       # compute the true cost of the solution
       g = SimpleGraph(n)
       for e in E

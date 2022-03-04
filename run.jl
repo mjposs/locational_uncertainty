@@ -1,29 +1,3 @@
-using JuMP, Gurobi, CPLEX
-using LightGraphs, GraphPlot, SimpleWeightedGraphs
-using LinearAlgebra
-using Printf, DelimitedFiles
-using Random, MultivariateStats
-
-const Optimizer = "CPLEX"  # ARGS[1]
-if Optimizer == "Gurobi"
-    @info "Using Gurobi"
-    ENV["JULIA_DEBUG"] = Main
-    # avoids checking the license everytime a model is created
-    using Gurobi
-    const GUROBI_ENV = Gurobi.Env()
-else
-    @info "Using CPLEX"
-    using CPLEX
-end
-const ϵ = 0.001;
-const TIMELIMIT = 7200;
-const THREADS = 8;
-
-include("data.jl")
-include("algos.jl")
-include("X_and_cost.jl")
-
-
 #------
 
 function printres(time, res, seed, algo, data::Data_STP)
@@ -170,5 +144,5 @@ end
 
 #------
 
-#run_UFLP()
-run_steiner()
+# run_UFLP()
+# run_steiner()

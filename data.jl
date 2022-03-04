@@ -1,7 +1,3 @@
-using Distributions, LinearAlgebra
-using Distances
-using LightGraphs, GraphPlot, Cairo, Compose, Meshes
-
 abstract type Data end
 
 #-------------------------------------------------------------------------------
@@ -59,26 +55,40 @@ struct Data_clustering <: Data
   n::Int  # number of vertices
   dimension::Int  # dimension of the metric space
   nU::Vector{Int64}  # number of points in each uncertainty set
-  U::Vector{Array{Float64,2}}  # uncertainty set of each vertex
+  U::Vector{Vector{Vector{Float64}}}  # coordinates of the points in the uncertainty sets of each node
   K::Int  # number of clusters targeted in a balanced clustering
-  E::Vector{Pair{Int64}}  # List the edges of the ground graph
-  d²::Array{Array{Float64,2},2} # paiwise squared squared euclidean distances between each pair of uncertainty sets
+  E::Vector{Tuple{Int64,Int64}}  # List the edges of the ground graph
+  d²::Array{Array{Float64,2},2} # pairwise squared squared euclidean distances between each pair of uncertainty sets
   d⁰::Dict  # nominal distances, e.g. d(i,j)
 
-  function Data_clustering(instance, n, d, nU, U, K, d²)
-    E = [(i,j) for i in 1:n, j in i+1:n]
+  function Data_clustering(instance, n, dim, nU, U, K)
+    E = [(i,j) for i in 1:n for j in i+1:n]
+
+    d² = Array{Array{Float64,2},2}(undef, n, n);
+    for i in 1:n
+      for j in i:n
+        d²[i,j] = zeros(nU[i],nU[j])
+        for k in 1:nU[i]
+          for l in 1:nU[j]
+            d²[i,j][k,l] = sum((U[j][l]-U[i][k]).^2)
+          end
+        end
+        d²[j,i] = d²[i,j];
+      end
+    end
+
 
     # compute the paiwise squared distances between the barycenters of U
-    barycenter = Array{Float64,2}(undef,2,0);
-    for i in V
-       barycenter = [barycenter sum(data.U[i], dims=2)./data.nU[i]]
+    barycenter = Vector{Vector{Float64}}();
+    for i ∈ 1:n
+        push!(barycenter, sum(U[i][k] for k in 1:nU[i])./nU[i])
     end
     d⁰ = Dict()
     for e in E
-      d⁰[e] = sum((barycenter[:,j]-barycenter[:,i]).^2)
+      d⁰[e] = sum((barycenter[e[2]]-barycenter[e[1]]).^2)
     end
 
-    return new(instance, n, d, nU, U, K, E, d², d⁰)
+    return new(instance, n, dim, nU, U, K, E, d², d⁰)
   end
 end
 

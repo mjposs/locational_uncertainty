@@ -41,7 +41,7 @@ function print_costs_STP()
         end
     	for value in allvalues, i in 1:length(algos)
     		number = findlast(val[i] .<= value)
-    		if number != nothing res[i] = [ res[i] ; value 100*number/(nseed*ninstances*nU) ]
+    		if number !== nothing res[i] = [ res[i] ; value 100*number/(nseed*ninstances*nU) ]
     		else res[i] = [ res[i] ; value 0 ]
     		end
     	end
@@ -81,7 +81,7 @@ function print_costs_UFLP()
         end
     	for value in allvalues, i in 1:length(algos)
     		number = findlast(val[i] .<= value)
-    		if number != nothing res[i] = [ res[i] ; value 100*number/(nseed*ninstances) ]
+    		if number !== nothing res[i] = [ res[i] ; value 100*number/(nseed*ninstances) ]
     		else res[i] = [ res[i] ; value 0 ]
     		end
     	end
@@ -102,7 +102,7 @@ function print_costs_UFLP()
         end
         for value in allvalues, i in 1:length(algos)
             number = findlast(val[i] .<= value)
-            if number != nothing res[i] = [ res[i] ; value 100*number/(nseed*ninstances) ]
+            if number !== nothing res[i] = [ res[i] ; value 100*number/(nseed*ninstances) ]
             else res[i] = [ res[i] ; value 0 ]
             end
         end
@@ -222,7 +222,7 @@ function print_costs()
         end
         for value in allvalues, i in 1:length(algos)
             number = findlast(val[i] .<= value)
-            if number != nothing res[i] = [ res[i] ; value 100*number/(nseed*ninstances) ]
+            if number !== nothing res[i] = [ res[i] ; value 100*number/(nseed*ninstances) ]
             else res[i] = [ res[i] ; value 0 ]
             end
         end

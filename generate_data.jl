@@ -1,10 +1,6 @@
-using Distributions, LinearAlgebra
-using Distances
-using Graphs, GraphPlot, Cairo, Compose, Meshes
-
-#--------
+"""#--------
 # Generation of instances along the lines of M. Daskin. Genrand2: A random network generator.
-# Department of Industrial Engineering and Management Sciences, Northwestern University,
+# Department of Industrial Engineering and Management Sciences, Northwestern University,"""
 # Evanston, IL, USA, 1993
 function build_UFLP(n, m, cardI, nU, seed, p)
   Random.seed!(seed)
@@ -16,7 +12,11 @@ function build_UFLP(n, m, cardI, nU, seed, p)
   dst = [norm(positions[i,:] - positions[j,:])^2 for i in 1:n, j in 1:n]
   MST = kruskal_mst(g_MST, dst)
   g = SimpleWeightedGraph(n)
-  for e in MST add_edge!(g,e.src,e.dst,norm(positions[e.src,:] - positions[e.dst,:])) end
+  cost = Dict()
+  for e in MST 
+    add_edge!(g,e.src,e.dst, norm(positions[e.src,:] - positions[e.dst,:]))
+    cost[(e.src,e.dst)] = norm(positions[e.src,:] - positions[e.dst,:])
+  end
 
   #draw(PDF("UFLP0.pdf", 16cm, 16cm), gplot(g, positions[:,1], positions[:,2], nodelabel=1:nv(g)))
 
@@ -35,7 +35,7 @@ function build_UFLP(n, m, cardI, nU, seed, p)
     for j in 1:length(E_MST)
       e′ = E_MST[j]
       s′ = Segment((positions[e′[1],1],positions[e′[1],2]), (positions[e′[2],1],positions[e′[2],2]))
-      if s ∩ s′ != nothing
+      if s ∩ s′ !== nothing
         # two edges sharing an extremeity are not considered crossing
         point = coordinates(s ∩ s′)
         dst_to_endpoints = min(norm(point-positions[e[1],:]),norm(point-positions[e[2],:]),norm(point-positions[e′[1],:]),norm(point-positions[e′[2],:]))
@@ -74,7 +74,7 @@ function build_UFLP(n, m, cardI, nU, seed, p)
           e = edges[j]
           s = Segment((positions[e[1],1],positions[e[1],2]), (positions[e[2],1],positions[e[2],2]))
           s′ = Segment((positions[e′[1],1],positions[e′[1],2]), (positions[e′[2],1],positions[e′[2],2]))
-          if s ∩ s′ != nothing
+          if s ∩ s′ !== nothing
             # two edges sharing an extremeity are not considered crossing
             point = coordinates(s ∩ s′)
             dst_to_endpoints = min(norm(point-positions[e[1],:]),norm(point-positions[e[2],:]),norm(point-positions[e′[1],:]),norm(point-positions[e′[2],:]))
@@ -170,7 +170,7 @@ function read_data_STP(instance,Δ,nU)
   end
   line = findfirst(datafile.=="Coordinates")
   pos = Vector{Vector{Int64}}()
-  if line != nothing
+  if line !== nothing
     line = line[1]
     for i in 1:n
       push!(pos,[datafile[line+i,3],datafile[line+i,4]])
@@ -301,10 +301,10 @@ function create_small_STP(dim,Δ,nU)
   return Data_STP(instance,n,m,g,from,to,δ⁻,δ⁺,t,t′,T,b,pos,U,nU,d,Δ,E,d⁰)
 end
 
-#--------
-# generation of synthetic bivariate gaussian datasets reproducing the procedure
-# described in De Carvalho and Lechevallier (2009) "Partitional Clustering
-# Algorithms for Symbolic Interval Data Based on Single Adaptive Distances."
+"""
+  build_gaussian_clustering
+  Generation of synthetic bivariate gaussian datasets reproducing the procedure described in De Carvalho and Lechevallier (2009) "Partitional Clustering  Algorithms for Symbolic Interval Data Based on Single Adaptive Distances."
+"""
 function build_gaussian_clustering(n_per_cluster, interval_length, μ1, μ2, σ1², σ2², ρ12)
   K = length(μ1);
   # build bivariate gaussian distributions
@@ -320,73 +320,130 @@ function build_gaussian_clustering(n_per_cluster, interval_length, μ1, μ2, σ1
   # draw the centers of the uncertainty sets from the gaussian distributions
   # and then build each set as a rectangle with dimensions drawn uniformly in
   # an input interval
-  U = Vector{Array{Float64,2}}();
+  U = Vector{Vector{Vector{Float64}}}();
   for i in 1:n_per_cluster
     for k in 1:K
-      push!(U, Array{Float64,2}(undef,2,0));
+      push!(U, Vector{Vector{Float64}}());
       z = rand(G[k]);
       γ = [1 + interval_length*rand() ; 1 + interval_length*rand()];
-      U[end] = [U[end] [z[1] - γ[1]/2.0 ; z[2] - γ[2]/2.0]  [z[1] - γ[1]/2.0 ; z[2] + γ[2]/2.0] [z[1] + γ[1]/2.0 ; z[2] - γ[2]/2.0] [z[1] + γ[1]/2.0 ; z[2] + γ[2]/2.0] ];
+      push!(U[end], [z[1] - γ[1]/2.0 ; z[2] - γ[2]/2.0]);
+      push!(U[end], [z[1] - γ[1]/2.0 ; z[2] + γ[2]/2.0]);
+      push!(U[end], [z[1] + γ[1]/2.0 ; z[2] - γ[2]/2.0]); 
+      push!(U[end], [z[1] + γ[1]/2.0 ; z[2] + γ[2]/2.0]);
     end
   end
   n = K * n_per_cluster;
   nU = 4 * Int.(ones(n));
 
-  dsq = Array{Array{Float64,2},2}(undef, n, n);
-  for i in 1:n
-    for j in i:n
-      dsq[i,j] = pairwise(SqEuclidean(), U[i], U[j], dims = 2);
-      dsq[j,i] = dsq[i,j];
-    end
-  end
-
-  return Data_clustering("synthetic_clustering", K * n_per_cluster, 2, nU, U,
-    K, dsq);
+  return Data_clustering("synthetic_clustering", K * n_per_cluster, 2, nU, U, K);
 end
 
 """
-# generation of synthetic bivariate gaussian datasets reproducing the procedure
-# described in De Carvalho and Lechevallier (2009) "Partitional Clustering
-# Algorithms for Symbolic Interval Data Based on Single Adaptive Distances.
-dfunction build_together_clustering(n_per_cluster, interval_length, μ1, μ2)
+  build_together_clustering
+ 
+  Generation of synthetic bivariate gaussian datasets reproducing the procedure described in De Carvalho and Lechevallier (2009) "Partitional Clustering Algorithms for Symbolic Interval Data Based on Single Adaptive Distances."
+"""
+function build_together_clustering(n_per_cluster, interval_length, μ1, μ2)
   K = length(μ1);
 
   # draw the centers of the uncertainty sets from the gaussian distributions
   # and then build each set as a rectangle with dimensions drawn uniformly in
   # an input interval
-  U = Vector{Array{Float64,2}}();
+  U = Vector{Vector{Vector{Float64}}}();
   for i in 1:n_per_cluster
     for k in 1:K
-      push!(U, Array{Float64,2}(undef,2,0));
+      push!(U, Vector{Vector{Float64}}());
       z = [μ1[k];μ2[k]];
       γ = [1 + interval_length*rand() ; 1 + interval_length*rand()];
-      U[end] = [U[end] [z[1] - γ[1]/2.0 ; z[2] - γ[2]/2.0]  [z[1] - γ[1]/2.0 ; z[2] + γ[2]/2.0] [z[1] + γ[1]/2.0 ; z[2] - γ[2]/2.0] [z[1] + γ[1]/2.0 ; z[2] + γ[2]/2.0] ];
+      push!(U[end], [z[1] - γ[1]/2.0 ; z[2] - γ[2]/2.0]);
+      push!(U[end], [z[1] - γ[1]/2.0 ; z[2] + γ[2]/2.0]);
+      push!(U[end], [z[1] + γ[1]/2.0 ; z[2] - γ[2]/2.0]); 
+      push!(U[end], [z[1] + γ[1]/2.0 ; z[2] + γ[2]/2.0]);
     end
   end
   n = K * n_per_cluster;
   nU = 4 * Int.(ones(n));
 
-  dsq = Array{Array{Float64,2},2}(undef, n, n);
-  for i in 1:n
-    for j in i:n
-      dsq[i,j] = pairwise(SqEuclidean(), U[i], U[j], dims = 2);
-      dsq[j,i] = dsq[i,j];
-    end
-  end
-
   return Data_clustering("synthetic_clustering", K * n_per_cluster, 2, nU, U,
-    K, dsq);
+    K);
 end
 
 #-------------------------------------------------------------------------------
+function add_dim(box::Vector{Vector{Float64}}, dim::Int, xmin::Vector{Float64}, xmax::Vector{Float64})
+  nU = length(box)
+  for k ∈ 1:nU
+    box[k][dim] = xmin[dim]
+    push!(box, copy(box[k]))
+    box[end][dim] = xmax[dim]
+  end
+end
+function create_box(U0::Vector{Float64}, dims::Vector{Int}, xmin::Vector{Float64}, xmax::Vector{Float64})
+  box = Vector{Vector{Float64}}()
+  push!(box, U0)
+  for d ∈ dims
+    add_dim(box, d, xmin, xmax)
+  end
+  return box
+end
 
-function read_data_clustering(instance,Δ,nU)
-  datafile = readdlm(instance)
+function read_balanced_clustering(instance,p_missing,K)
+  coords = readdlm("data/BalancedClustering/"*instance)
+  coords = coord[1:50,:]  # won't be solved for more than 50 nodes
+  (n,dim) = size(coords)
 
-  """n = 4
-  pos =
-  0.1 0.1
-  0.5 0.5
-  0.9 0.9
-  0.2 0.2"""
+  # Build uncertainty sets
+  ## simulate missing data by p_missing percents components in each dimension
+  ## missing data is replaced with intervals with extremities equal to the minimum and maximum observed values
+  nb_missing = floor(Int, p_missing/100.0 * n)
+  xmin = vec(minimum(coords, dims=1));
+  xmax = vec(maximum(coords, dims=1));
+
+  ## first draw the missing fields of each vertex
+  missing_dims = Vector{Vector{Int}}()
+  for i ∈ 1:n
+    push!(missing_dims, Vector{Int}())
+  end
+  for d ∈ 1:dim
+    missing = Vector{Int}()
+    while length(missing) < nb_missing
+      missing = unique(rand(1:n, 2*nb_missing))
+    end
+    for i ∈ missing[1:nb_missing]
+      push!(missing_dims[i], d)
+    end
+  end
+
+  ## then, create the corresponding uncertainty sets
+  nU = Vector{Int}()
+  U = Vector{Vector{Vector{Float64}}}()
+  for i ∈ 1:n
+    push!(nU, 2^(length(missing_dims[i])))
+    push!(U, create_box(coords[i,:],missing_dims[i],xmin,xmax))
+  end
+  return Data_clustering(instance, n, dim, nU, U, K);
+end
+
+function read_interval_data(instance,K)
+  coords = readdlm("data/IntervalClustering/cars.txt")
+  (n,nvals) = size(coords)
+  dim = round(Int, nvals/2)
+
+  xmin = zeros(n,dim)
+  xmax = zeros(n,dim)
+  centers = zeros(n,dim)
+  for i ∈ 1:n
+    for j ∈ 1:dim
+      xmin[i,j] = coords[i,2*j-1]
+      xmax[i,j] = coords[i,2*j]
+      centers[i,j] = (xmin[i,j]+xmax[i,j])/2
+    end
+  end
+
+  M = fit(PCA, transpose(centers); maxoutdim=2, pratio=1.0)
+  xmin_pca = transpose(transform(M, transpose(xmin)))
+  xmax_pca = transpose(transform(M, transpose(xmax)))
+  println("xmin = $xmin_pca")
+  println("xmax = $xmax_pca")
+  println(reconstruct(M,transpose(xmin_pca)))
+
 end
