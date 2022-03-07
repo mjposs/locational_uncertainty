@@ -3,7 +3,8 @@ using Graphs, GraphPlot, SimpleWeightedGraphs
 using LinearAlgebra
 using Distances
 using Printf, DelimitedFiles
-using Random, Distributions, MultivariateStats
+using Random
+using Statistics, Distributions, MultivariateStats
 using Cairo, Compose # Meshes
 
 

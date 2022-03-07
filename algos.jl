@@ -1,4 +1,8 @@
-"""Cutting-plane algorithm to solve the problem exactly."""
+"""
+exact(data)
+
+Cutting-plane algorithm to solve the problem exactly.
+"""
 
 function exact(data)
    # build the initial relaxed IP where there is no cut to compute the worst-case cost of the solution tree
@@ -18,9 +22,6 @@ function exact(data)
 
          # get the worst-case position of all the vertices by solving the separation problem
          sep_val, u = c(x_val, data)
-
-         # build the corresponding optimality cut
-         con = @build_constraint(model[:ω] ≥ sum(data.d[e[1], u[e[1]], e[2], u[e[2]]] * model[:x][e] for e in E));
       elseif typeof(data) == Data_UFLP
          "UFLP"
          y_val = Dict()
@@ -28,9 +29,6 @@ function exact(data)
 
          # get the worst-case position of all the vertices by solving the separation problem
          sep_val, u = c(x_val, y_val, data)
-
-         # build the corresponding optimality cut
-         con = @build_constraint(model[:ω] ≥ sum(data.d[e[1], u[e[1]], e[2], u[e[2]]] * model[:x][e] for e in E));
       elseif typeof(data) == Data_clustering
          # build the graph encoded by the current solution of the problem
          g = SimpleGraph(n)
@@ -68,10 +66,9 @@ function exact(data)
 
          # get the worst-case position of all the vertices by solving the separation problem
          sep_val, u = c(g, data)
-
-         # build the corresponding optimality cut
-         con = @build_constraint(model[:ω] ≥ sum(data.d²[i,j][u[i],u[j]] * model[:x][(i,j)] for (i,j) in E));
       end
+      # build the corresponding optimality cut
+      con = @build_constraint(model[:ω] ≥ sum(data.cost[i,j][u[i],u[j]] * model[:x][(i,j)] for (i,j) in E));
       # add the optimality cut if it is not satisfied by the current solution
       if sep_val > ω_val + ϵ
          @info "Separation value = $(sep_val), ω = $(ω_val)"
@@ -95,71 +92,24 @@ end
 
 #-------------------------------------------------------------------------------
 
-"Heuristic solving the problem based on c^max."
+"""
+heuristic_deterministic
 
-function heuristic_dmax(data)
-   typeof(data) == Data_STP && @info "max-cost heuristic for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
-   typeof(data) == Data_UFLP && @info "max-cost heuristic for $(data.instance) with |I|=$(length(data.I)), |J|=$(length(data.J)), p=$(data.p)"
-   E = data.E;
-   n = data.n;
-   model = build_IP_model(data)
+Classical approach ignoring uncertainty and taking a given deterministic cost for each edge. This cost will typically reflect etiher the maximum, the average or the distance between the centers of the uncertainty sets.
+"""
 
-   # only the objective is modified in the heuristics
-   if typeof(data) == Data_clustering
-      @objective(model, Min, sum(maximum(data.d²[i,j])*model[:x][(i,j)] for (i,j) in E));
-   else
-      c_max = Dict()
-      for e in E c_max[e] = maximum(data.d[e[1],:,e[2],:]) end
-      @objective(model, Min, sum(c_max[e]*model[:x][e] for e in E))
-   end
-   optimize!(model)
-   @info "Solution found with heuristic cost $(objective_value(model))"
-
-   # get the true cost of the solution
-   x_val = Dict()
-   for e in E x_val[e] = value(model[:x][e]) end
-   if typeof(data) == Data_STP
-      "STP"
-      truecost, u = c(x_val, data)
-   elseif typeof(data) == Data_UFLP
-      "UFLP"
-      y_val = Dict()
-      for j in data.J y_val[j] = value(model[:y][j]) end
-      truecost, u = c(x_val, y_val, data)
-   elseif typeof(data) == Data_clustering
-      g = SimpleGraph(n)
-      for e ∈ E
-         if x_val[e] > ϵ
-            add_edge!(g, e[1], e[2])
-         end
-      end
-      truecost, u = c(g, data)
-   else
-      @error("Unknow data type")
-   end
-   @info "True cost is $truecost"
-   for e in E
-      x_val[e] > ϵ && @debug "$(e[1]) - $(e[2])"
-   end
-   return truecost, objective_value(model), MOI.get(model, MOI.RelativeGap())
-end
-
-#-------------------------------------------------------------------------------
-
-"Classical approach ignoring uncertainty and taking the centers of U."
-
-function heuristic_det(data)
-   typeof(data) == Data_STP && @info "det heuristic for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
-   typeof(data) == Data_UFLP && @info "det heuristic for $(data.instance) with |I|=$(length(data.I)), |J|=$(length(data.J)), p=$(data.p)"
-   typeof(data) == Data_clustering && @info "deterministic for $(data.instance) with  $(data.nU) extreme points"
+function heuristic_deterministic(data, cost::Dict{Tuple{Int64,Int64},Float64})
+   typeof(data) == Data_STP && @info "deterministic solution for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
+   typeof(data) == Data_UFLP && @info "deterministic solution for $(data.instance) with |I|=$(length(data.I)), |J|=$(length(data.J)), p=$(data.p)"
+   typeof(data) == Data_clustering && @info "deterministic solution for $(data.instance) with  $(data.nU) extreme points"
 
    # initialize the model
    model = build_IP_model(data)
    E = data.E
    n = data.n;
 
-   # only the objective is modified in the heuristics
-   @objective(model, Min, sum(data.d⁰[e] * model[:x][e] for e in E))
+   # only the objective is modified in the heuristic solving a deterministic model
+   @objective(model, Min, sum(cost[e] * model[:x][e] for e in E))
    optimize!(model)
    @info "Solution found with heuristic cost $(objective_value(model))"
 
@@ -205,7 +155,7 @@ function heuristic_adr(data::Data_STP)
    δ⁺ = [data.δ⁺[i][data.δ⁺[i] .≤ data.m] for i in V]
    δ⁻ = [data.δ⁻[i][data.δ⁻[i] .≤ data.m] for i in V]
    s = data.nU
-   M = [ maximum(data.d[i,:,j,:]) for i in 1:data.n, j in 1:data.n ]
+   M = [ maximum(data.cost[i,j]) for i in 1:data.n, j in 1:data.n ]
    model = build_IP_model(data)
    add_bridge(model, MOI.Bridges.Constraint.SOCtoNonConvexQuadBridge)
 
@@ -238,6 +188,7 @@ function heuristic_adr(data::Data_STP)
    end
    @constraint(model, model[:ω] ≥ sum(μ0[i] for i in V) + sum(ν[e] for e in 1:data.m))
    @constraint(model, [i in V, k in 1:s], μ0[i] ≥ sum(πfrom[i,e,k] for e in δ⁺[i]) + sum(πto[i,e,k] for e in δ⁻[i]))
+   # TODO: it seems that there is an index error below, is it really E[e] and M[e] that are relevant?
    @constraint(model, [i in V, k in 1:s, e in δ⁺[i]], πfrom[i,e,k] ≥ νfrom[i,e,k] - M[e]*(1-model[:x][E[e]]))
    @constraint(model, [i in V, k in 1:s, e in δ⁻[i]], πto[i,e,k] ≥ νto[i,e,k] - M[e]*(1-model[:x][E[e]]))
 

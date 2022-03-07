@@ -40,12 +40,9 @@ function run_steiner()
 	seed = 0
 
     @warn "warming up ..."
-    data = read_data_STP("data/Steiner/small.stp", 0, 1)
-    @info "CP for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
-    exact(data)
-    heuristic_det(data)
-    heuristic_dmax(data)
-    heuristic_adr(data)
+    # data = read_data_STP("data/Steiner/small.stp", 0, 1)
+    # @info "CP for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
+    # compare_all_methods(data)
 
     @warn "now looping over all problems"
 
@@ -60,16 +57,7 @@ function run_steiner()
         data = read_data_STP("data/Steiner/"*folder*instance,Δ,nU)
         #data = create_small_STP(size,Δ,nU)
 
-		time_exact = @elapsed res_exact = exact(data);
-	    time_worst = @elapsed res_worst = heuristic_dmax(data);
-	    time_center = @elapsed res_center = heuristic_det(data);
-		#time_adr = @elapsed res_adr = heuristic_adr(data);
-
-		printres(time_exact, res_exact, seed, folder*"exact", data);
-	    printres(time_worst, res_worst, seed, folder*"worst", data);
-	    printres(time_center, res_center, seed, folder*"center", data);
-		#printres(time_adr, res_adr, seed, folder*"adr", data);
-
+        compare_all_methods(data)
         flush(stdout)
     end
 end
@@ -91,13 +79,7 @@ function run_UFLP()
 		@warn "($n, $m, $cardI, $nU, $seed, $p)"
 		data = build_UFLP(n, m, cardI, nU, seed, p)
 
-		time_exact = @elapsed res_exact = exact(data);
-	    time_worst = @elapsed res_worst = heuristic_dmax(data);
-	    time_center = @elapsed res_center = heuristic_det(data);
-
-		printres(time_exact, res_exact, seed, "exact", data);
-	    printres(time_worst, res_worst, seed, "worst", data);
-	    printres(time_center, res_center, seed, "center", data);
+        compare_all_methods(data)
 	end
 end
 
@@ -134,12 +116,17 @@ end
 function compare_all_methods(data::Data)
     seed = 1;
     time_exact = @elapsed res_exact = exact(data);
-    time_worst = @elapsed res_worst = heuristic_dmax(data);
-    time_center = @elapsed res_center = heuristic_det(data);
+    time_worst = @elapsed res_worst = heuristic_deterministic(data, data.c_max);
+    time_center = @elapsed res_center = heuristic_deterministic(data, data.c_center);
+    time_avg = @elapsed res_center = heuristic_deterministic(data, data.c_avg);
 
-    printres(time_exact, res_exact, seed, "exact", data);
-    printres(time_worst, res_worst, seed, "worst", data);
-    printres(time_center, res_center, seed, "center", data);
+    printres(time_exact, res_exact, seed, folder*"exact", data);
+    printres(time_worst, res_worst, seed, folder*"worst", data);
+    printres(time_center, res_center, seed, folder*"center", data);
+    printres(time_avg, res_center, seed, folder*"center", data);
+
+    #time_adr = @elapsed res_adr = heuristic_adr(data);
+    #printres(time_adr, res_adr, seed, folder*"adr", data);
 end
 
 #------

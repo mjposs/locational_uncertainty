@@ -62,8 +62,8 @@ function c(x_val, data::Data_STP)
    for i in order, k in 1:data.nU
       indmax[i,k] = []
       for j in outneighbors(dfs,i)
-         index = argmax( [ value[j,l] + data.d[i,k,j,l] for l in 1:data.nU ] )
-         value[i,k] += value[j,index] + data.d[i,k,j,index]
+         index = argmax( [ value[j,l] + data.cost[i,j][k,l] for l in 1:data.nU ] )
+         value[i,k] += value[j,index] + data.cost[i,j][k,index]
          push!(indmax[i,k],(j,index))
       end
    end
@@ -105,7 +105,7 @@ function c(x_val, y_val, data::Data_UFLP)
    I = data.I
    J = data.J
    J′ = []
-   d = data.d
+   cost = data.cost
    value = 0
    u = Vector{Int64}(undef,data.n)
    for j in J
@@ -128,8 +128,8 @@ function c(x_val, y_val, data::Data_UFLP)
          sum = 0
          # For each position u_j of the root of the star (the facility), we take the worst-positions for each leaf (client) I′[k]
          for k in 1:length(I′)
-            u′[k] = argmax(d[j,u_j,I′[k],1:length(data.U[I′[k]])])
-            sum += d[j,u_j,I′[k],u′[k]]
+            u′[k] = argmax(cost[j,I′[k]][u_j,1:length(data.U[I′[k]])])
+            sum += cost[j,I′[k]][u′[j],u′[k]]
          end
          if sum > best
             best_pos_for_j = u_j
@@ -201,7 +201,7 @@ end
 function c(g::SimpleGraph{Int64}, data::Data_clustering)
    n = data.n;
    nU = data.nU;
-   d² = data.d²;
+   cost = data.cost;
    u = Int64.(zeros(n));
    total_obj_value = 0.0;
    # the solution graph provides a partition of the vertices into cliques whose worst-case costs can be computed independently
@@ -223,7 +223,7 @@ function c(g::SimpleGraph{Int64}, data::Data_clustering)
       @constraint(separation, ct_is_edge[i in V, j in V ; i < j], sum(Y[i,j,ki,kj] for ki in 1:nU[i], kj in 1:nU[j]) ≤ 1);
 
       # we maximize the sum of distances between chosen positions
-      @objective(separation, Max, sum(Y[i,j,ki,kj] * d²[i,j][ki,kj] for i in V, j in V, ki in 1:nU[i], kj in 1:nU[j] if i < j));
+      @objective(separation, Max, sum(Y[i,j,ki,kj] * cost[i,j][ki,kj] for i in V, j in V, ki in 1:nU[i], kj in 1:nU[j] if i < j));
 
       # solve the separation problem and store the solution
       optimize!(separation);
@@ -250,7 +250,7 @@ function build_separation(data::Data_clustering)
    n = data.n;
    V = 1:n
    nU = data.nU;
-   d² = data.d²;
+   cost = data.cost;
    u = Int64.(zeros(n));
    total_obj_value = 0.0;
    # the solution graph provides a partition of the vertices into cliques whose worst-case costs can be computed independently
@@ -268,14 +268,13 @@ function build_separation(data::Data_clustering)
    @constraint(separation, ct_is_edge[i in V, j in V ; i < j], sum(Y[i,j,ki,kj] for ki in 1:nU[i], kj in 1:nU[j]) ≤ 1);
 
    # we maximize the sum of distances between chosen positions
-   @objective(separation, Max, sum(Y[i,j,ki,kj] * d²[i,j][ki,kj] for i in V, j in V, ki in 1:nU[i], kj in 1:nU[j] if i < j));
+   @objective(separation, Max, sum(Y[i,j,ki,kj] * cost[i,j][ki,kj] for i in V, j in V, ki in 1:nU[i], kj in 1:nU[j] if i < j));
 
    return separation;
 end
 
 function c(g::SimpleGraph{Int64}, data::Data_interval)
    n = data.n;
-   nU = data.nU;
    u_val = zeros(n);
    total_obj_value = 0.0;
    D = 1:data.dimension;
@@ -287,14 +286,14 @@ function c(g::SimpleGraph{Int64}, data::Data_interval)
       end
       separation = create_model(data);
       # variables indicating which position is chosen for each vertex among its uncertainty set
-      @variable(separation, data.lb[i,d] <= u[i in V, d in D] <= data.ub[i,d]);
+      @variable(separation, data.lb[i,dim] <= u[i in V, dim in D] <= data.ub[i,dim]);
 
-      @objective(separation, Max, sum((u[i,d] - u[j,d])^2 for i in V, j in V, d in D if i < j))
+      @objective(separation, Max, sum((u[i,dim] - u[j,dim])^2 for i in V, j in V, dim in D if i < j))
 
       # solve the separation problem and store the solution
       optimize!(separation);
-      for i in V, d in D
-         u_val[i,d] = value(u[i,d]);
+      for i in V, dim in D
+         u_val[i,dim] = value(u[i,dim]);
       end
       total_obj_value += objective_value(separation)
    end

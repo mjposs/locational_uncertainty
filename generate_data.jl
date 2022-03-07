@@ -114,19 +114,15 @@ function build_UFLP(n, m, cardI, nU, seed, p)
   end
   I = sort(I)
   J = setdiff(1:n,I)
-  d = fill(-1.0,n,maximum(length.(U)),n,maximum(length.(U)))
-  for i in 1:n, u_i in 1:length(U[i]), j in 1:n, u_j in 1:length(U[j])
-    d[i,u_i,j,u_j] = dst[U[i][u_i],U[j][u_j]]
-  end
   E = Vector{Tuple{Int64,Int64}}()
-  d⁰ = Dict()
+  c_center = Dict()
   for i in I, j in J
     push!(E,(i,j))
-    d⁰[(i,j)] = dst[i,j]
+    c_center[(i,j)] = dst[i,j]
   end
   #draw(PDF("UFLP.pdf", 16cm, 16cm), gplot(g, positions[:,1], positions[:,2], nodelabel=1:nv(g)))
   #@info I
-  return Data_UFLP(instance, n, m, g, I, J, nU, U, p, d, E, d⁰)
+  return Data_UFLP(instance, n, m, g, I, J, nU, U, p, E, c_center)
 end
 
 #-------------------------------------------------------------------------------
@@ -143,6 +139,7 @@ function read_data_STP(instance,Δ,nU)
   δ⁻=Vector{Vector{Int64}}()
   E = Vector{Tuple{Int64,Int64}}()
 
+  # TODO: this is really heavy for nothing, class Graph provides everything
   for i in 1:n
     push!(δ⁺,[])
     push!(δ⁻,[])
@@ -154,7 +151,7 @@ function read_data_STP(instance,Δ,nU)
     push!(δ⁻[to[e]],e)
     push!(δ⁺[to[e]],e+m)
     push!(δ⁻[from[e]],e+m)
-  push!(E,(from[e],to[e]))
+    push!(E,(from[e],to[e]))
   end
   line = findfirst(datafile.=="Terminals")[1]
   t = datafile[line, 2]
@@ -200,17 +197,14 @@ function read_data_STP(instance,Δ,nU)
       push!(U[i],round.([pos[i][1]+radius*cos(2π*k/nU),pos[i][2]+radius*sin(2π*k/nU)]))
     end
   end
-  d = zeros(n,nU,n,nU)
-  for i in 1:n, k in 1:nU, j in 1:n, l in 1:nU
-    d[i,k,j,l] = norm(U[i][k]-U[j][l])
-  end
-  d⁰ = Dict()
+
+  c_center = Dict()
   for e in E
-  d⁰[e] = distances[e[1],e[2]]
+    c_center[e] = distances[e[1],e[2]]
   end
   g = SimpleGraph(n)
   for e in E add_edge!(g, e[1], e[2]) end
-  return Data_STP(instance,n,m,g,from,to,δ⁻,δ⁺,t,t′,T,b,pos,U,nU,d,Δ,E,d⁰)
+  return Data_STP(instance,n,m,g,from,to,δ⁻,δ⁺,t,t′,T,b,pos,U,nU,Δ,E,c_center)
 end
 
 #-------------------------------------------------------------------------------
@@ -288,17 +282,13 @@ function create_small_STP(dim,Δ,nU)
       push!(U[i],round.([pos[i][1]+radius*cos(2π*k/nU),pos[i][2]+radius*sin(2π*k/nU)]))
     end
   end
-  d = zeros(n,nU,n,nU)
-  for i in 1:n, k in 1:nU, j in 1:n, l in 1:nU
-    d[i,k,j,l] = norm(U[i][k]-U[j][l])
-  end
-  d⁰ = Dict()
+  c_center = Dict()
   for e in E
-  d⁰[e] = distances[e[1],e[2]]
+  c_center[e] = distances[e[1],e[2]]
   end
   g = SimpleGraph(n)
   for e in E add_edge!(g, e[1], e[2]) end
-  return Data_STP(instance,n,m,g,from,to,δ⁻,δ⁺,t,t′,T,b,pos,U,nU,d,Δ,E,d⁰)
+  return Data_STP(instance,n,m,g,from,to,δ⁻,δ⁺,t,t′,T,b,pos,U,nU,Δ,E,c_center)
 end
 
 """
@@ -380,8 +370,8 @@ end
 function create_box(U0::Vector{Float64}, dims::Vector{Int}, xmin::Vector{Float64}, xmax::Vector{Float64})
   box = Vector{Vector{Float64}}()
   push!(box, U0)
-  for d ∈ dims
-    add_dim(box, d, xmin, xmax)
+  for dim ∈ dims
+    add_dim(box, dim, xmin, xmax)
   end
   return box
 end
@@ -403,13 +393,13 @@ function read_balanced_clustering(instance,p_missing,K)
   for i ∈ 1:n
     push!(missing_dims, Vector{Int}())
   end
-  for d ∈ 1:dim
+  for k ∈ 1:dim
     missing = Vector{Int}()
     while length(missing) < nb_missing
       missing = unique(rand(1:n, 2*nb_missing))
     end
     for i ∈ missing[1:nb_missing]
-      push!(missing_dims[i], d)
+      push!(missing_dims[i], k)
     end
   end
 
