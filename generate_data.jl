@@ -5,7 +5,7 @@
 function build_UFLP(n, m, cardI, nU, seed, p)
   Random.seed!(seed)
   positions = rand(n,2)
-  # 1- ensures connexity by adding a min-cost spanning tree, favorize short edges to emulate transportation networks
+  # 1- ensures connectivity by adding a min-cost spanning tree, favorize short edges to emulate transportation networks
   sources = [i for i in 1:n for j in (i+1):n]
   destinations = [j for i in 1:n for j in (i+1):n]
   g_MST = complete_graph(n)
@@ -144,6 +144,7 @@ function read_data_STP(instance,Δ,nU)
     push!(δ⁺,[])
     push!(δ⁻,[])
   end
+  g = SimpleGraph(n)
   for e in 1:m
     push!(from,datafile[line+e,2])
     push!(to,datafile[line+e,3])
@@ -152,6 +153,7 @@ function read_data_STP(instance,Δ,nU)
     push!(δ⁺[to[e]],e+m)
     push!(δ⁻[from[e]],e+m)
     push!(E,(from[e],to[e]))
+    add_edge!(g, from[e], to[e])
   end
   line = findfirst(datafile.=="Terminals")[1]
   t = datafile[line, 2]
@@ -176,11 +178,13 @@ function read_data_STP(instance,Δ,nU)
     @info "Positions not included in data file => computed through a simple variant of MDS-MAP"
     line = findfirst(datafile.=="Edges")[1]
     weights = []
-    for e in 1:m push!(weights,datafile[line+e,4]) end
-    g = SimpleWeightedGraph(convert(Array{Int64,1},from), convert(Array{Int64,1},to), convert(Array{Float64,1},weights))
+    for e in 1:m 
+      push!(weights,datafile[line+e,4])
+    end
+    g_disjkstra = SimpleWeightedGraph(convert(Array{Int64,1},from), convert(Array{Int64,1},to), convert(Array{Float64,1},weights))
     D = zeros(n,n)
     for i in 1:n
-      D[i,:] = dijkstra_shortest_paths(g, i).dists
+      D[i,:] = dijkstra_shortest_paths(g_disjkstra, i).dists
     end
     positions = round.(transform(fit(MDS, D, maxoutdim=2, distances=true)))
     for i in 1:n
@@ -202,8 +206,6 @@ function read_data_STP(instance,Δ,nU)
   for e in E
     c_center[e] = distances[e[1],e[2]]
   end
-  g = SimpleGraph(n)
-  for e in E add_edge!(g, e[1], e[2]) end
   return Data_STP(instance,n,m,g,from,to,δ⁻,δ⁺,t,t′,T,b,pos,U,nU,Δ,E,c_center)
 end
 
@@ -295,7 +297,7 @@ end
   build_gaussian_clustering
   Generation of synthetic bivariate gaussian datasets reproducing the procedure described in De Carvalho and Lechevallier (2009) "Partitional Clustering  Algorithms for Symbolic Interval Data Based on Single Adaptive Distances."
 """
-function build_gaussian_clustering(n_per_cluster, interval_length, μ1, μ2, σ1², σ2², ρ12)
+function build_gaussian_clustering(name::String, n_per_cluster, interval_length, μ1, μ2, σ1², σ2², ρ12)
   K = length(μ1);
   # build bivariate gaussian distributions
   G = Vector{MultivariateDistribution}();
@@ -325,7 +327,7 @@ function build_gaussian_clustering(n_per_cluster, interval_length, μ1, μ2, σ1
   n = K * n_per_cluster;
   nU = 4 * Int.(ones(n));
 
-  return Data_clustering("synthetic_clustering", K * n_per_cluster, 2, nU, U, K);
+  return Data_clustering(name, K * n_per_cluster, 2, nU, U, K);
 end
 
 """
@@ -413,27 +415,73 @@ function read_balanced_clustering(instance,p_missing,K)
   return Data_clustering(instance, n, dim, nU, U, K);
 end
 
-function read_interval_data(instance,K)
+function read_cars(K::Int = 4, dim::Int = 2)
   coords = readdlm("data/IntervalClustering/cars.txt")
   (n,nvals) = size(coords)
-  dim = round(Int, nvals/2)
+  dim_init = round(Int, nvals/2)
 
-  xmin = zeros(n,dim)
-  xmax = zeros(n,dim)
-  centers = zeros(n,dim)
+  xmin = zeros(n,dim_init)
+  xmax = zeros(n,dim_init)
+  centers = zeros(n,dim_init)
   for i ∈ 1:n
-    for j ∈ 1:dim
+    for j ∈ 1:dim_init
       xmin[i,j] = coords[i,2*j-1]
       xmax[i,j] = coords[i,2*j]
       centers[i,j] = (xmin[i,j]+xmax[i,j])/2
     end
   end
+  centers_std = (centers .- mean(centers, dims=1))./std(centers, dims=1)
+  xmin_std = (xmin .- mean(centers, dims=1))./std(centers, dims=1)
+  xmax_std = (xmax .- mean(centers, dims=1))./std(centers, dims=1)
 
-  M = fit(PCA, transpose(centers); maxoutdim=2, pratio=1.0)
-  xmin_pca = transpose(transform(M, transpose(xmin)))
-  xmax_pca = transpose(transform(M, transpose(xmax)))
-  println("xmin = $xmin_pca")
-  println("xmax = $xmax_pca")
-  println(reconstruct(M,transpose(xmin_pca)))
+  M = fit(PCA, transpose(centers_std); maxoutdim=dim, pratio=1.0)
+  xmin_pca = Array{Float64}(transpose(transform(M, transpose(xmin_std))))
+  xmax_pca = Array{Float64}(transpose(transform(M, transpose(xmax_std))))
+  centers_pca = Array{Float64}(transpose(transform(M, transpose(centers_std))))
+
+  ## then, create the corresponding uncertainty sets
+  nU = Vector{Int}()
+  U = Vector{Vector{Vector{Float64}}}()
+  for i ∈ 1:n
+    push!(nU, 2^dim)
+    push!(U, create_box(centers_pca[i,:], collect(1:2),xmin_pca[i,:],xmax_pca[i,:]))
+  end
+
+  return U
+end
+
+function read_meteo_data(K::Int = 6, dim::Int = 2)
+  tmin = readdlm("data/IntervalClustering/nrmmin.txt")
+  tmax = readdlm("data/IntervalClustering/nrmmax.txt")
+  tavg = readdlm("data/IntervalClustering/nrmavg.txt")
+  pcp = readdlm("data/IntervalClustering/nrmpcp.txt")
+
+
+  tavg_std = (tavg .- mean(tavg, dims=1))./std(tavg, dims=1)
+  tmin_std = (tmin .- mean(tavg, dims=1))./std(tavg, dims=1)
+  tmax_std = (tmax .- mean(tavg, dims=1))./std(tavg, dims=1)
+  pcp_std = (pcp .- mean(pcp, dims=1))./std(pcp, dims=1)
+
+
+  M = fit(PCA, transpose(tavg_std); maxoutdim=dim, pratio=1.0)
+  tmin_pca = Array{Float64}(transpose(transform(M, transpose(tmin_std))))
+  tmax_pca = Array{Float64}(transpose(transform(M, transpose(tmax_std))))
+  tavg_pca = Array{Float64}(transpose(transform(M, transpose(tavg_std))))
+
+  M = fit(PCA, transpose(pcp_std); maxoutdim=1, pratio=1.0)
+  pcp_pca = Array{Float64}(transpose(transform(M, transpose(pcp_std))))
+
+  ## then, create the corresponding uncertainty sets
+  nU = Vector{Int}()
+  n= size(tmin)[1]
+  U = Vector{Vector{Vector{Float64}}}()
+  for i ∈ 1:n
+    push!(nU, 2^dim)
+    U0 = tavg_pca[i,:]
+    push!(U0, pcp_pca[i,1])
+    push!(U, create_box(U0, collect(1:dim),tmin_pca[i,:],tmax_pca[i,:]))
+  end
+
+  return Data_p_center("nmr", n, dim, nU, U, K);
 
 end

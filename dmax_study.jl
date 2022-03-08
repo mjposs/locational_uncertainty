@@ -168,9 +168,7 @@ function min_ratio_dual(n,F)
     E = [(k,l) for (i,j) in F for k in U[i] for l in U[j]];
 
     ##
-    #model = Model(Gurobi.Optimizer);
-	model = direct_model(Gurobi.Optimizer(OutputFlag=1))
-
+    model = Model(Gurobi.Optimizer);
     #
     #
     @variable(model, dintra[i in 1:n] >= 0); 
@@ -231,7 +229,6 @@ function min_ratio_dual(n,F)
     @debug begin
 	   "---- running verification"
 	   check = Model(Gurobi.Optimizer)
-	   check = direct_model(Gurobi.Optimizer(OutputFlag=0))
 	   @variable(check, δ[k in indU], Bin)
 	   @variable(check, Δ[(k,l) in E], Bin)
 	   @constraint(check, [i in 1:n], sum(δ[k] for k in U[i]) == 1)

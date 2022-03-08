@@ -1,11 +1,9 @@
+using LinearAlgebra, Printf, DelimitedFiles, Random
 using JuMP, Gurobi, CPLEX
 using Graphs, GraphPlot, SimpleWeightedGraphs
-using LinearAlgebra
 using Distances
-using Printf, DelimitedFiles
-using Random
 using Statistics, Distributions, MultivariateStats
-using Cairo, Compose # Meshes
+using Cairo, Compose, Meshes
 
 
 const Optimizer = "CPLEX"  # ARGS[1]
