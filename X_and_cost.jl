@@ -34,7 +34,7 @@ function build_IP_model(data::Data_STP)
    @objective(model, Min, ω)
    @constraint(model, [t in T, i in V], sum(f[a, t] for a in data.δ⁺[i]) - sum(f[a, t] for a in data.δ⁻[i]) == data.b[i, t])
    @constraint(model, [e in 1:length(E), t in T], f[e, t] + f[e+data.m, t] ≤ x[E[e]])
-   @constraint(model, sum(x[e] for e in E) ≤ n - 1) #avoid having too many edges in the first iterations. Does not prevent cycles though. To be improved.
+   @constraint(model, sum(x[e] for e in E) ≤ n - 1)  # avoid having too many edges in the first iterations. Does not prevent cycles though. To be improved.
    @constraint(model, ω ≥ sum(data.c_avg[e] * x[e] for e ∈ E))
    return model
 end
@@ -60,7 +60,7 @@ function c(x_val, data::Data_STP)
    for e in Ex
       add_edge!(g, e[1], e[2])
    end
-   Vx = findall(degree(g) .>= 1)
+   Vx = findall(Graphs.degree(g) .>= 1)
 
    # Compute the true cost of the solution by dynamic programming
    value = zeros(nv(g), data.nU) #value function

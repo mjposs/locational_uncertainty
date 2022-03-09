@@ -37,7 +37,7 @@ end
  - `F` : edge list
 """
 function min_ratio_exact(n,F)
-
+    degree
     # initialize the adjacency list
     A = [Int[] for i in 1:n]
     ranks = Dict();
@@ -480,7 +480,7 @@ function enum_connected_graphs(n,(i,j), F)
         for (k,l) in F
             add_edge!(G, k, l);
         end
-        degrees = degree(G)[end:-1:1];
+        degrees = Graphs.degree(G)[end:-1:1];
         if !issorted(degrees) return res; end
         if is_connected(G)
             push!(res, F);
