@@ -7,10 +7,10 @@ struct Data_STP <: Data
   n::Int #number of nodes
   m::Int #number of edges
   g::SimpleGraph  # Underlying graph
-  from::Vector{Int64}
-  to::Vector{Int64}
-  δ⁻::Vector{Vector{Int64}}
-  δ⁺::Vector{Vector{Int64}}
+  from::Vector{Int64} #contains the first extremity of every edge
+  to::Vector{Int64} #contains the second extremity of every edge
+  δ⁻::Vector{Vector{Int64}} #contains the indexes of the arcs entering every node
+  δ⁺::Vector{Vector{Int64}} #contains the indexes of the arcs leaving every node
   t::Int
   t′::Int # =t-1
   T::Vector{Int64}

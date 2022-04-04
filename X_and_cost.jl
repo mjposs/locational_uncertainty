@@ -41,6 +41,29 @@ end
 
 #-------------------------------------------------------------------------------
 
+function build_IP_model_compact(data::Data_STP)
+   n = data.n
+   E = data.E
+   A = 1:2*data.m
+   T = 1:data.t′
+   V = 1:data.n
+   model = create_model(data, 0)
+   @variable(model, x[E], Bin)  # ∀e∈E, true if edge e is taken in the tree 
+   @variable(model, f[A, T] ≥ 0)
+   @variable(model, z[V, V, 1:data.nU] ≥ 0) # z[i,k,level] worst-case cost of DP at label (i,k) at level 
+
+   @objective(model, Min, ω)
+   @constraint(model, [level in V, k in 1:data.nU], ω ≥ z[data.t′,k,level])
+   @constraint(model, [i in V, level in setdiff(V,n), k in 1:data.nU], ω[i,k,level] ≥ sum(x[(i,j)]) )
+   @constraint(model, [t in T, i in V], sum(f[a, t] for a in data.δ⁺[i]) - sum(f[a, t] for a in data.δ⁻[i]) == data.b[i, t])
+   @constraint(model, [e in 1:length(E), t in T], f[e, t] + f[e+data.m, t] ≤ x[E[e]])
+   @constraint(model, sum(x[e] for e in E) ≤ n - 1) #avoid having too many edges in the first iterations. Does not prevent cycles though. To be improved.
+   @constraint(model, ω ≥ sum(data.c_avg[e] * x[e] for e ∈ E))
+   return model
+end
+
+#-------------------------------------------------------------------------------
+
 function c(x_val, data::Data_STP)
    function fill_u(node, index)
       u[node] = index
@@ -73,7 +96,7 @@ function c(x_val, data::Data_STP)
    order = order[max.(Graphs.degree(g)[order] .> 1, order .== root)] # disregard leafs and isolated vertices (but keep the root)
    for i in order
       for k in 1:data.nU
-         indmax[i, k] = Vector{Tuple{Int,Int}}()
+         indmax[i, k] = Vector{Tupleà)={Int,Int}}()
          for j in outneighbors(dfs, i)
             val_max, l_max = findmax(value[j, :] .+ data.cost[i, j][k, :])
             value[i, k] += val_max
