@@ -57,8 +57,8 @@ function exact(data)
          sep_val, u = c(g, data)
       end
 
-      @info "Separation value = $(sep_val), ω = $(ω_val)"
       @debug begin
+         println("Separation value = $(sep_val), ω = $(ω_val)")
          Ex = E[findall([x_val[e] for e in E] .> 1-ϵ)]
          println("x_val = $(Ex)")
          for e in Ex
@@ -274,8 +274,8 @@ function solve_STP_compact(data::Data_STP)
    @info "Solution found of cost $(objective_value(model))"
    
    @debug begin 
-      "Print solution:"
-   println("Edges")
+      println("Print solution:")
+      println("Edges")
       for a in A
          value(x[a]) > 0.001 && println("$a")
       end
@@ -285,5 +285,5 @@ function solve_STP_compact(data::Data_STP)
       end
    end
 
-   return objective_value(model), MOI.get(model, MOI.RelativeGap())
+   return objective_value(model), -1,  MOI.get(model, MOI.RelativeGap())
 end

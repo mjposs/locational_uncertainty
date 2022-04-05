@@ -272,9 +272,12 @@ function create_small_STP(dim,Δ,nU)
     push!(δ⁻[from[e]],e+m)
   push!(E,(from[e],to[e]))
   end
-  for tt in 1:t′
-    b[T[tt],tt] = -1
-    b[T[t],tt] = 1
+  b = Dict()
+  for tt in T[1:t′]
+    b[tt] = zeros(n)
+    b[tt][tt] = -1
+    # teminal T[t] is the source of all commodities, e.g. the root of the arborescence
+    b[tt][T[t]] = 1
   end
   distances = [norm(pos[i]-pos[j]) for i in 1:n, j in 1:n]
   distance_mean = sum(distances)/(n*(n-1))

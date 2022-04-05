@@ -1,19 +1,19 @@
 using DelimitedFiles
 
-names = ["\\exact","\\heurdet","\\heurdmax","\\heuradr"]
+names = ["\\exact","\\worst","\\center","\\avg","\\adr","\\compact"]
 NU = 1
 MAXVAL = 60
-folder = "small_i"
+folder = "small"
 #folder = ""
 
 
 #------
 
 function print_costs_STP()
-    algos = ["center","worst","adr"]
-    if folder != "small_i"
-        global algos = algos[1:2] #remove heur_adr for large instances
-    end
+    algos = ["worst","center","avg","adr"]
+    #if folder != "small_i"
+    #    global algos = algos[1:2] #remove heur_adr for large instances
+    #end
     datafile = readdlm("res/Steiner/$folder/exact.txt")
     D = sort(unique(datafile[:,2]))
     nseed = maximum(datafile[:,8])
@@ -121,7 +121,7 @@ function print_times_STP()
     column["Delta"] = 2
     column["nU"] = 3
     column["dim"] = 1
-    algos = ["exact","center","worst","adr"]
+    algos = ["worst","center","avg","adr","exact","adr","compact"]
     #algos = ["exact","center","worst"]
     for param in parameters
         col = column[param]
@@ -270,4 +270,4 @@ function print_times(type)
 end
 
 #print_costs()
-print_times("P6E")
+#print_times("P6E")

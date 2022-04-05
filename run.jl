@@ -1,7 +1,12 @@
 #------
 
 function printres(time, res, seed, algo, data::Data_STP)
-    f = open("res/Steiner/$(algo).txt","a")
+    file = "res/Steiner/$(algo).txt"
+    f = open(file,"a")
+    #if isfile(file)   
+    #else
+    #    f = open(file,"w")
+    #end
     if algo[1] == 'P'
         algo = algo[4:end]
     end
@@ -46,34 +51,30 @@ function printres(time, res, seed, algo, data::Data_p_center)
 end
 
 
-function compare_all_methods(data::Data)
-    seed = 1;
-    time_exact = @elapsed res_exact = exact(data);
-    time_worst = @elapsed res_worst = heuristic_deterministic(data, data.c_max);
-    time_center = @elapsed res_center = heuristic_deterministic(data, data.c_center);
-    time_avg = @elapsed res_avg = heuristic_deterministic(data, data.c_avg);
-
-    printres(time_exact, res_exact, seed, "exact", data);
-    printres(time_worst, res_worst, seed, "worst", data);
-    printres(time_center, res_center, seed, "center", data);
-    printres(time_avg, res_avg, seed, "avg", data);
-
-    #time_adr = @elapsed res_adr = heuristic_adr(data);
-    #printres(time_adr, res_adr, seed, "adr", data);
+function compare_all_methods(data::Data,seed)
+    time_exact = @elapsed res_exact = exact(data)
+    seed > 0 && printres(time_exact, res_exact, seed, "exact", data)
+    for costs in [("worst", data.c_max), ("center",data.c_center), ("avg",data.c_avg)]
+        @info "Solve deterministic counterpart using $(costs[1])"
+        time = @elapsed res = heuristic_deterministic(data, costs[2])
+        seed > 0 && printres(time, res, seed, costs[1], data)
+    end
+    if typeof(data) == Data_STP
+        time = @elapsed res = heuristic_adr(data)
+        seed > 0 && printres(time, res, seed, "adr", data)
+        time = @elapsed res = solve_STP_compact(data)
+        seed > 0 && printres(time, res, seed, "compact", data)
+    end
 end
 
 #------
 
 function run_steiner()
     Random.seed!(1)
-	seed = 0
 
     @warn "warming up ..."
     data = read_data_STP("data/Steiner/small.stp", 0, 1)
-    exact(data)
-    solve_STP_compact(data)
-    # @info "CP for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
-    # compare_all_methods(data)
+    compare_all_methods(data,0)
 
     @warn "now looping over all problems"
 	"NOTE: Instances small and small_i correspond to the instances format_i from the paper"
@@ -81,18 +82,13 @@ function run_steiner()
 	folder = "P6E/"
     #INSTANCES = readdir("data/Steiner/"*folder)
     INSTANCES =["p619.stp"] #,"p620.stp","p621.stp"]
-    for instance in INSTANCES, nU in [10], Δ in [0.1]
+    #for instance in INSTANCES, nU in [10], Δ in [0.1]
     #for nU in [5,10,20], Δ in [0.1,0.5,1], seed in 1:20, size in 1:2
-        #@warn "seed number $seed"
-        #data = read_data_STP("data/Steiner/"*folder*instance,0.1,5)
-        data = read_data_STP("data/Steiner/small.stp", 1, 6)
+    for nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10, size in 1:2
+        data = create_small_STP(size,Δ,nU)
+        compare_all_methods(data,seed)
 
-        time_exact = @elapsed res_exact = exact(data)
-        @info time_exact
-        time_adr = @elapsed res_adr = heuristic_adr(data);
-        printres(time_adr, res_adr, seed, "adr", data);
-
-        flush(stdout)
+        #flush(stdout)
     end
 end
 
