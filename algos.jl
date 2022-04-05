@@ -156,7 +156,9 @@ end
 
 #-------------------------------------------------------------------------------
 
-"ADR based approach from de Ruiter et al."
+"""
+ADR based approach from de Ruiter et al. Only for Steiner Tree
+"""
 
 function heuristic_adr(data::Data_STP)
    @info "adr heuristic for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
@@ -224,4 +226,66 @@ function heuristic_adr(data::Data_STP)
       "πto: $(value.(πto))"
    end
    return truecost, objective_value(model), MOI.get(model, MOI.RelativeGap())
+end
+
+#-------------------------------------------------------------------------------
+"""
+Compact exact formulation for the Steiner Tree Problem. Relies on a directed formulation instead
+of the non-directed formulation used in the build_IP_model(). Hence, rather to add undirected variables
+to make the formulation compatible with the function exact() above, we consider this formulation
+as a full *solution agorithm*.
+"""
+
+function solve_STP_compact(data::Data_STP)
+   n = data.n
+   m = data.m
+   from = [data.from; data.to] # append the reverse edges
+   to = [data.to; data.from] # append the reverse edges
+   A = [(from[a], to[a]) for a in 1:2m]
+   δ⁺ = [A[data.δ⁺[i]] for i in 1:n]
+   δ⁻ = [A[data.δ⁻[i]] for i in 1:n]
+   T = data.T
+   T0 = T[1:data.t′]
+   V = 1:data.n
+   r = T[data.t]
+   cardU = 1:data.nU
+   M = sum(sort(collect(values(data.c_max)),rev=true)[1:(n-1)])
+
+   model = create_model(data, 0)
+   @variable(model, x[A], Bin)  # ∀a∈A, true if directed edge a is taken in the arborescence
+   @variable(model, f[A, T0] ≥ 0)
+   @variable(model, v[T0], Bin)
+   @variable(model, z[V, 1:data.nU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)
+   @variable(model, Z[A, 1:data.nU] ≥ 0) # used to linearize the maximization over ℓ
+   @variable(model, X[A, 1:data.nU] ≥ 0) # linearize the product x[a]*Z[A,k,ℓ]
+   @variable(model, ω ≥ 0)
+
+   @objective(model, Min, ω)
+   @constraint(model, [k in 1:data.nU], ω ≥ z[r,k])
+   @constraint(model, [i in setdiff(V,T0),k in cardU,ℓ in cardU], z[i,k] ≥ sum(X[a,k] for a in δ⁺[i]))
+   @constraint(model, [i in T0,k in cardU,ℓ in cardU], v[i] => {z[i,k] ≥ sum(X[a,k] for a in δ⁺[i])})
+   #@constraint(model, [a in A, k in cardU, ℓ in cardU], X[a,k] ≥ Z[a,k] - M*(1-x[a]))
+   @constraint(model, [a in A, k in cardU, ℓ in cardU], x[a] => {X[a,k] ≥ Z[a,k]})
+   @constraint(model, [a in A, k in cardU, ℓ in cardU], Z[a,k] ≥ data.cost[a[1],a[2]][k,ℓ] + z[a[2],ℓ])   
+   @constraint(model, [i in T0, a in δ⁺[i]], x[a] ≤ v[i])
+
+   @constraint(model, [t in T0, i in V], sum(f[a, t] for a in δ⁺[i]) - sum(f[a, t] for a in δ⁻[i]) == data.b[t][i])
+   @constraint(model, [a in A, t in T0], f[a, t] ≤ x[a])
+   optimize!(model)
+
+   @info "Solution found of cost $(objective_value(model))"
+   
+   @debug begin 
+      "Print solution:"
+   println("Edges")
+      for a in A
+         value(x[a]) > 0.001 && println("$a")
+      end
+      println("v: ")
+      for i in T0
+         value(v[i]) > 0.001 && println("$i, ")
+      end
+   end
+
+   return objective_value(model), MOI.get(model, MOI.RelativeGap())
 end

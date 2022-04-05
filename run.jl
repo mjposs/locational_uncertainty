@@ -69,12 +69,13 @@ function run_steiner()
 	seed = 0
 
     @warn "warming up ..."
-    # data = read_data_STP("data/Steiner/small.stp", 0, 1)
+    data = read_data_STP("data/Steiner/small.stp", 0, 1)
+    exact(data)
+    solve_STP_compact(data)
     # @info "CP for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
     # compare_all_methods(data)
 
     @warn "now looping over all problems"
-
 	"NOTE: Instances small and small_i correspond to the instances format_i from the paper"
     #folder = "small_i/"
 	folder = "P6E/"
@@ -83,12 +84,13 @@ function run_steiner()
     for instance in INSTANCES, nU in [10], Δ in [0.1]
     #for nU in [5,10,20], Δ in [0.1,0.5,1], seed in 1:20, size in 1:2
         #@warn "seed number $seed"
-        #data = read_data_STP("data/Steiner/"*folder*instance,Δ,nU)
-        data = read_data_STP("data/Steiner/small.stp", 0.5, 4)
+        data = read_data_STP("data/Steiner/"*folder*instance,0.1,5)
+        #data = read_data_STP("data/Steiner/small.stp", 1, 6)
 
-        exact(data)
-        heuristic_deterministic(data, data.c_max);
-        build_IP_model_compact(data)
+        time_exact = @elapsed res_exact = exact(data)
+        @info time_exact
+        time_compact = @elapsed solve_STP_compact(data)
+        @info time_compact
 
         flush(stdout)
     end
