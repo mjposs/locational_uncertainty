@@ -173,12 +173,11 @@ function heuristic_adr(data::Data_STP)
 
    @variable(model, μ0[V])
    @variable(model, μ[1:data.n, 1:data.m, 1:2]) #using sparse definitions might be faster?
-   @variable(model, ν[1:data.m] ≥ 0) # = ||μ_i,ij + μ_j,ij||_2
-   @variable(model, νfrom[V, 1:data.m, 1:s] ≥ 0) # = ||u_i^k - μ_i,ij||_2
-   @variable(model, νto[V, 1:data.m, 1:s] ≥ 0) # = ||u_i^k - μ_i,ji||_2
-   @variable(model, πfrom[V, 1:data.m, 1:s] ≥ 0) # = x_e × νto[i,e,k]
-   @variable(model, πto[V, 1:data.m, 1:s] ≥ 0) # = x_e × νfrom[i,e,k]
+   @variable(model, ν[1:data.m] ≥ 0) # used in the epigraphic reformulation of ||μ_i,ij + μ_j,ij||_2
+   @variable(model, νfrom[V, 1:data.m, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ij u_i^k - μ_i,ij||_2
+   @variable(model, νto[V, 1:data.m, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ji u_i^k - μ_i,ji||_2
 
+   # ν_ij ≥ |μ_i,ij + μ_j,ij||_2
    for e in 1:data.m
       vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
       vector_for_SOCP[1] = ν[e]
@@ -186,23 +185,22 @@ function heuristic_adr(data::Data_STP)
       vector_for_SOCP[3] = μ[data.from[e], e, 2] + μ[data.to[e], e, 2]
       @constraint(model, vector_for_SOCP in SecondOrderCone())
    end
+   # ν_i,ij^k ≥ ||x_ij u_i^k - μ_i,ij||_2
    for i in V, e in δ⁺[i], k in 1:s
       vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
       vector_for_SOCP[1] = νfrom[i, e, k]
-      vector_for_SOCP[2:3] = [data.U[i][k][q] - μ[i, e, q] for q in 1:2]
+      vector_for_SOCP[2:3] = [model[:x][E[e]]*data.U[i][k][q] - μ[i, e, q] for q in 1:2]
       @constraint(model, vector_for_SOCP in SecondOrderCone())
    end
+   # ν_i,ji^k ≥ ||x_ji u_i^k - μ_i,ji||_2
    for i in V, e in δ⁻[i], k in 1:s
       vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
       vector_for_SOCP[1] = νto[i, e, k]
-      vector_for_SOCP[2:3] = [data.U[i][k][q] + μ[i, e, q] for q in 1:2]
+      vector_for_SOCP[2:3] = [model[:x][E[e]]*data.U[i][k][q] + μ[i, e, q] for q in 1:2]
       @constraint(model, vector_for_SOCP in SecondOrderCone())
    end
    @constraint(model, model[:ω] ≥ sum(μ0[i] for i in V) + sum(ν[e] for e in 1:data.m))
-   @constraint(model, [i in V, k in 1:s], μ0[i] ≥ sum(πfrom[i, e, k] for e in δ⁺[i]) + sum(πto[i, e, k] for e in δ⁻[i]))
-   # TODO: it seems that there is an index error below, is it really E[e] and M[e] that are relevant?
-   @constraint(model, [i in V, k in 1:s, e in δ⁺[i]], πfrom[i, e, k] ≥ νfrom[i, e, k] - M[e] * (1 - model[:x][E[e]]))
-   @constraint(model, [i in V, k in 1:s, e in δ⁻[i]], πto[i, e, k] ≥ νto[i, e, k] - M[e] * (1 - model[:x][E[e]]))
+   @constraint(model, [i in V, k in 1:s], μ0[i] ≥ sum(νfrom[i,e,k] for e in δ⁺[i]) + sum(νto[i,e,k] for e in δ⁻[i]))
 
    @debug model
 

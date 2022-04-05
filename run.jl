@@ -84,13 +84,13 @@ function run_steiner()
     for instance in INSTANCES, nU in [10], Δ in [0.1]
     #for nU in [5,10,20], Δ in [0.1,0.5,1], seed in 1:20, size in 1:2
         #@warn "seed number $seed"
-        data = read_data_STP("data/Steiner/"*folder*instance,0.1,5)
-        #data = read_data_STP("data/Steiner/small.stp", 1, 6)
+        #data = read_data_STP("data/Steiner/"*folder*instance,0.1,5)
+        data = read_data_STP("data/Steiner/small.stp", 1, 6)
 
         time_exact = @elapsed res_exact = exact(data)
         @info time_exact
-        time_compact = @elapsed solve_STP_compact(data)
-        @info time_compact
+        time_adr = @elapsed res_adr = heuristic_adr(data);
+        printres(time_adr, res_adr, seed, "adr", data);
 
         flush(stdout)
     end
