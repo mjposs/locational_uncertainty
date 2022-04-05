@@ -80,13 +80,16 @@ function run_steiner()
 	folder = "P6E/"
     #INSTANCES = readdir("data/Steiner/"*folder)
     INSTANCES =["p619.stp"] #,"p620.stp","p621.stp"]
-    for instance in INSTANCES, nU in [10], Δ in [0.1,0.5,1.0]
+    for instance in INSTANCES, nU in [10], Δ in [0.1]
     #for nU in [5,10,20], Δ in [0.1,0.5,1], seed in 1:20, size in 1:2
         #@warn "seed number $seed"
-        data = read_data_STP("data/Steiner/"*folder*instance,Δ,nU)
-        #data = create_small_STP(size,Δ,nU)
+        #data = read_data_STP("data/Steiner/"*folder*instance,Δ,nU)
+        data = read_data_STP("data/Steiner/small.stp", 0.5, 4)
 
-        compare_all_methods(data)
+        exact(data)
+        heuristic_deterministic(data, data.c_max);
+        build_IP_model_compact(data)
+
         flush(stdout)
     end
 end
@@ -167,4 +170,4 @@ end
 #------
 
 # run_UFLP()
-# run_steiner()
+run_steiner()

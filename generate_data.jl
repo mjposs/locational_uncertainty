@@ -75,7 +75,7 @@ function build_UFLP(n, m, cardI, nU, seed, p)
           s = Segment((positions[e[1],1],positions[e[1],2]), (positions[e[2],1],positions[e[2],2]))
           s′ = Segment((positions[e′[1],1],positions[e′[1],2]), (positions[e′[2],1],positions[e′[2],2]))
           if s ∩ s′ !== nothing
-            # two edges sharing an extremeity are not considered crossing
+            # two edges sharing an extremity are not considered crossing
             point = coordinates(s ∩ s′)
             dst_to_endpoints = min(norm(point-positions[e[1],:]),norm(point-positions[e[2],:]),norm(point-positions[e′[1],:]),norm(point-positions[e′[2],:]))
             if dst_to_endpoints > 0.0001
@@ -97,7 +97,7 @@ function build_UFLP(n, m, cardI, nU, seed, p)
   for i in 1:n
     ds = dijkstra_shortest_paths(g, i)
     neighbours = collect(1:n)[sortperm(ds.dists)]
-    neighbours = neighbours[1:nU] # take the nU clostest neigbours
+    neighbours = neighbours[1:nU] # take the nU closest neigbours
     push!(U,neighbours)
     dst[i,:] = ds.dists
   end
@@ -139,7 +139,7 @@ function read_data_STP(instance,Δ,nU)
   δ⁻=Vector{Vector{Int64}}()
   E = Vector{Tuple{Int64,Int64}}()
 
-  # TODO: this is really heavy for nothing, class Graph provides everything
+  # The following construct the vectors δ⁺ and δ⁻ which are convenient to use in the formulations
   for i in 1:n
     push!(δ⁺,[])
     push!(δ⁻,[])
@@ -162,10 +162,12 @@ function read_data_STP(instance,Δ,nU)
   for i in 1:t
     push!(T,datafile[line+i,2])
   end
-  b = zeros(n,t′)
-  for tt in 1:t′
-    b[T[tt],tt] = -1
-    b[T[t],tt] = 1
+  b = Dict()
+  for tt in T[1:t′]
+    b[tt] = zeros(n)
+    b[tt][tt] = -1
+    # teminal T[t] is the source of all commodities, e.g. the root of the arborescence
+    b[tt][T[t]] = 1
   end
   line = findfirst(datafile.=="Coordinates")
   pos = Vector{Vector{Int64}}()

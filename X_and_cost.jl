@@ -8,8 +8,8 @@ function create_model(data::Data, output_flag::Int64 = 0)
       set_optimizer_attribute(model, "NodefileStart", 0.5)
    else
       set_optimizer(model, CPLEX.Optimizer)
-      set_optimizer_attribute(model, "CPX_PARAM_SCRIND", output_flag)
-      set_optimizer_attribute(model, "CPXPARAM_ScreenOutput", output_flag)
+      #set_optimizer_attribute(model, "CPX_PARAM_SCRIND", output_flag)
+      #set_optimizer_attribute(model, "CPXPARAM_ScreenOutput", output_flag)
       #set_optimizer_attribute(model,"CPX_PARAM_MIPDISPLAY", 1)
       set_optimizer_attribute(model, "CPX_PARAM_TILIM", TIMELIMIT)
       set_optimizer_attribute(model, "CPX_PARAM_NODEFILEIND", 2)
@@ -24,16 +24,16 @@ function build_IP_model(data::Data_STP)
    n = data.n
    E = data.E
    A = 1:2*data.m
-   T = 1:data.t′
+   T0 = data.T[1:data.t′]
    V = 1:data.n
    model = create_model(data, 0)
    @variable(model, x[E], Bin)  # ∀e∈E, true if edge e is taken in the tree 
-   @variable(model, f[A, T] ≥ 0)
+   @variable(model, f[A, T0] ≥ 0)
    @variable(model, ω ≥ 0)
 
    @objective(model, Min, ω)
-   @constraint(model, [t in T, i in V], sum(f[a, t] for a in data.δ⁺[i]) - sum(f[a, t] for a in data.δ⁻[i]) == data.b[i, t])
-   @constraint(model, [e in 1:length(E), t in T], f[e, t] + f[e+data.m, t] ≤ x[E[e]])
+   @constraint(model, [t in T0, i in V], sum(f[a, t] for a in data.δ⁺[i]) - sum(f[a, t] for a in data.δ⁻[i]) == data.b[t][i])
+   @constraint(model, [e in 1:length(E), t in T0], f[e, t] + f[e+data.m, t] ≤ x[E[e]])
    @constraint(model, sum(x[e] for e in E) ≤ n - 1)  # avoid having too many edges in the first iterations. Does not prevent cycles though. To be improved.
    @constraint(model, ω ≥ sum(data.c_avg[e] * x[e] for e ∈ E))
    return model
@@ -43,23 +43,46 @@ end
 
 function build_IP_model_compact(data::Data_STP)
    n = data.n
-   E = data.E
+   m = data.m
    A = 1:2*data.m
-   T = 1:data.t′
+   T = data.T
+   T0 = T[1:data.t′]
    V = 1:data.n
+   r = T[data.t]
+   cardU = 1:data.nU
+   M = sum(sort(collect(values(data.c_max)),rev=true)[1:(n-1)])
+
    model = create_model(data, 0)
-   @variable(model, x[E], Bin)  # ∀e∈E, true if edge e is taken in the tree 
-   @variable(model, f[A, T] ≥ 0)
-   @variable(model, z[V, V, 1:data.nU] ≥ 0) # z[i,k,level] worst-case cost of DP at label (i,k) at level 
+   @variable(model, x[A], Bin)  # ∀a∈A, true if directed edge a is taken in the arborescence
+   @variable(model, f[A, T0] ≥ 0)
+   @variable(model, v[T0], Bin)
+   @variable(model, z[V, 1:data.nU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)
+   @variable(model, Z[A, 1:data.nU] ≥ 0) # used to linearize the maximization over ℓ
+   @variable(model, X[A, 1:data.nU] ≥ 0) # linearize the product x[a]*Z[A,k,ℓ]
+   @variable(model, ω ≥ 0)
 
    @objective(model, Min, ω)
-   @constraint(model, [level in V, k in 1:data.nU], ω ≥ z[data.t′,k,level])
-   @constraint(model, [i in V, level in setdiff(V,n), k in 1:data.nU], ω[i,k,level] ≥ sum(x[(i,j)]) )
-   @constraint(model, [t in T, i in V], sum(f[a, t] for a in data.δ⁺[i]) - sum(f[a, t] for a in data.δ⁻[i]) == data.b[i, t])
-   @constraint(model, [e in 1:length(E), t in T], f[e, t] + f[e+data.m, t] ≤ x[E[e]])
-   @constraint(model, sum(x[e] for e in E) ≤ n - 1) #avoid having too many edges in the first iterations. Does not prevent cycles though. To be improved.
-   @constraint(model, ω ≥ sum(data.c_avg[e] * x[e] for e ∈ E))
-   return model
+   @constraint(model, [k in 1:data.nU], ω ≥ z[r,k])
+   @constraint(model, [i in setdiff(V,T0),k in cardU,ℓ in cardU], z[i,k]≥sum(X[a,k] for a in data.δ⁺[i]))
+   @constraint(model, [i in T0,k in cardU,ℓ in cardU], v[i] => {z[i,k]≥sum(X[a,k] for a in data.δ⁺[i])})
+   @constraint(model, [a in A, k in cardU, ℓ in cardU], X[a,k] ≥ Z[a,k] - M*(1-x[a]))
+   # The following is split in two because arrays from and to are indexed only from 1 to m. Hence, the first group
+   # relates to the first m arcs, while the second relates to the subsequent m arcs, obtained by inverting the former
+   for a in A, k in cardU, ℓ in cardU
+      if a ≤ m
+         @constraint(model, Z[a,k] ≥ data.cost[data.from[a],data.to[a]][k,ℓ] + z[data.to[a],ℓ])   
+      else
+         @constraint(model, Z[a,k] ≥ data.cost[data.from[a-m],data.to[a-m]][k,ℓ] + z[data.from[a-m],ℓ])   
+      end      
+   end
+   for i in T0
+      @constraint(model, [a in data.δ⁺[i]], x[a] ≤ v[i])
+   end
+
+   @constraint(model, [t in T0, i in V], sum(f[a, t] for a in data.δ⁺[i]) - sum(f[a, t] for a in data.δ⁻[i]) == data.b[t][i])
+   @constraint(model, [a in 1:length(A), t in T0], f[a, t] ≤ x[a])
+   print(model)
+   optimize!(model)
 end
 
 #-------------------------------------------------------------------------------
@@ -96,7 +119,7 @@ function c(x_val, data::Data_STP)
    order = order[max.(Graphs.degree(g)[order] .> 1, order .== root)] # disregard leafs and isolated vertices (but keep the root)
    for i in order
       for k in 1:data.nU
-         indmax[i, k] = Vector{Tupleà)={Int,Int}}()
+         indmax[i, k] = Vector{Tuple{Int,Int}}()
          for j in outneighbors(dfs, i)
             val_max, l_max = findmax(value[j, :] .+ data.cost[i, j][k, :])
             value[i, k] += val_max
