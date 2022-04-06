@@ -131,7 +131,6 @@ function print_times_STP()
             datafile[:,1] = parse.(Int64,[ datafile[i,1][end] for i in 1:size(datafile)[1] ])
         end
         allvalues = sort(unique(datafile[:,col]))
-        @show allvalues
         table = ["x"; allvalues]
         for algo in algos
             datafile = readdlm("res/Steiner/$folder/$algo.txt")
