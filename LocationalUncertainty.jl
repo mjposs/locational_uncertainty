@@ -18,8 +18,8 @@ else
     using CPLEX
 end
 const ϵ = 0.001;
-const TIMELIMIT = 7200;
-const THREADS = 8;
+const TIMELIMIT = 3600;
+const THREADS = 4;
 
 include("data.jl")
 include("generate_data.jl")

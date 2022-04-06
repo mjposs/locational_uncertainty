@@ -1,6 +1,6 @@
 using DelimitedFiles
 
-names = ["\\exact","\\worst","\\center","\\avg","\\adr","\\compact"]
+names = ["\\exact","\\worst","\\hcenter","\\avg","\\adr","\\compact"]
 NU = 1
 MAXVAL = 60
 folder = "small"
@@ -19,9 +19,10 @@ function print_costs_STP()
     nseed = maximum(datafile[:,8])
     ninstances = length(unique(datafile[:,1]))
     nU = length(unique(datafile[:,3]))
-    values = Vector{Vector{Float64}}(undef,3)
+    values = Vector{Vector{Float64}}(undef,length(algos))
 
     exact = datafile[1:end,5]
+    
     for i in 1:length(algos)
         datafile = readdlm("res/Steiner/$folder/$(algos[i]).txt")
         values[i] = 100*(datafile[1:end,5] - exact)./exact
@@ -34,7 +35,7 @@ function print_costs_STP()
         else
             allvalues = sort(union(val[1],val[2],val[3],MAXVAL))
         end
-        res = Vector{Matrix{Any}}(undef,3)
+        res = Vector{Matrix{Any}}(undef,length(algos))
         for i in 1:length(algos)
             val[i] = sort(val[i])
             res[i] = ["x" "solved"]
@@ -121,7 +122,7 @@ function print_times_STP()
     column["Delta"] = 2
     column["nU"] = 3
     column["dim"] = 1
-    algos = ["worst","center","avg","adr","exact","adr","compact"]
+    algos = ["worst","center","avg","adr","exact","compact"]
     #algos = ["exact","center","worst"]
     for param in parameters
         col = column[param]
@@ -130,6 +131,7 @@ function print_times_STP()
             datafile[:,1] = parse.(Int64,[ datafile[i,1][end] for i in 1:size(datafile)[1] ])
         end
         allvalues = sort(unique(datafile[:,col]))
+        @show allvalues
         table = ["x"; allvalues]
         for algo in algos
             datafile = readdlm("res/Steiner/$folder/$algo.txt")
