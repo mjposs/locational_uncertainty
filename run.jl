@@ -85,9 +85,11 @@ function run_steiner()
     
     #for instance in INSTANCES, nU in [10], Δ in [0.1]
     #for nU in [5,10,20], Δ in [0.1,0.5,1], seed in 1:20, size in 1:2
-    for nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10, size in 1:3
+    #for nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10, size in 1:3
+    for nU in [4], Δ in [0.2], seed in 2, size in 1
         data = create_small_STP(size,Δ,nU)
-        compare_all_methods(data,seed,folder)
+        res = heuristic_adr(data)
+        #compare_all_methods(data,seed,folder)
 
         #flush(stdout)
     end

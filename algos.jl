@@ -164,8 +164,10 @@ function heuristic_adr(data::Data_STP)
    @info "adr heuristic for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
    V = 1:data.n
    E = data.E
-   δ⁺ = [data.δ⁺[i][data.δ⁺[i].≤data.m] for i in V]
-   δ⁻ = [data.δ⁻[i][data.δ⁻[i].≤data.m] for i in V]
+   # In the following two definitions, we take only the edges with indexes less than m, meaning a single directed edge
+   # instead of two opposite ones.
+   δ⁺ = [ data.δ⁺[i][data.δ⁺[i]. ≤ data.m] for i in V ] 
+   δ⁻ = [ data.δ⁻[i][data.δ⁻[i]. ≤ data.m] for i in V ]
    s = data.nU
    M = [maximum(data.cost[i, j]) for i in 1:data.n, j in 1:data.n]
    model = build_IP_model(data)
@@ -177,7 +179,7 @@ function heuristic_adr(data::Data_STP)
    @variable(model, νfrom[V, 1:data.m, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ij u_i^k - μ_i,ij||_2
    @variable(model, νto[V, 1:data.m, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ji u_i^k - μ_i,ji||_2
 
-   # ν_ij ≥ |μ_i,ij + μ_j,ij||_2
+   # ν_ij ≥ ||μ_i,ij + μ_j,ij||_2
    for e in 1:data.m
       vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
       vector_for_SOCP[1] = ν[e]
@@ -252,7 +254,6 @@ function solve_STP_compact(data::Data_STP)
    model = create_model(data, 0)
    @variable(model, x[A], Bin)  # ∀a∈A, true if directed edge a is taken in the arborescence
    @variable(model, f[A, T0] ≥ 0)
-   @variable(model, v[T0], Bin)
    @variable(model, z[V, 1:data.nU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)
    @variable(model, Z[A, 1:data.nU] ≥ 0) # used to linearize the maximization over ℓ
    @variable(model, X[A, 1:data.nU] ≥ 0) # linearize the product x[a]*Z[A,k,ℓ]
@@ -260,12 +261,9 @@ function solve_STP_compact(data::Data_STP)
 
    @objective(model, Min, ω)
    @constraint(model, [k in 1:data.nU], ω ≥ z[r,k])
-   @constraint(model, [i in setdiff(V,T0),k in cardU,ℓ in cardU], z[i,k] ≥ sum(X[a,k] for a in δ⁺[i]))
-   @constraint(model, [i in T0,k in cardU,ℓ in cardU], v[i] => {z[i,k] ≥ sum(X[a,k] for a in δ⁺[i])})
-   #@constraint(model, [a in A, k in cardU, ℓ in cardU], X[a,k] ≥ Z[a,k] - M*(1-x[a]))
+   @constraint(model, [i in V,k in cardU,ℓ in cardU], z[i,k] ≥ sum(X[a,k] for a in δ⁺[i]))
    @constraint(model, [a in A, k in cardU, ℓ in cardU], x[a] => {X[a,k] ≥ Z[a,k]})
-   @constraint(model, [a in A, k in cardU, ℓ in cardU], Z[a,k] ≥ data.cost[a[1],a[2]][k,ℓ] + z[a[2],ℓ])   
-   @constraint(model, [i in T0, a in δ⁺[i]], x[a] ≤ v[i])
+   @constraint(model, [a in A, k in cardU, ℓ in cardU], Z[a,k] ≥ data.cost[a[1],a[2]][k,ℓ] + z[a[2],ℓ])
 
    @constraint(model, [t in T0, i in V], sum(f[a, t] for a in δ⁺[i]) - sum(f[a, t] for a in δ⁻[i]) == data.b[t][i])
    @constraint(model, [a in A, t in T0], f[a, t] ≤ x[a])
