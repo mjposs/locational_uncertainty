@@ -169,7 +169,6 @@ function heuristic_adr(data::Data_STP)
    δ⁺ = [ data.δ⁺[i][data.δ⁺[i]. ≤ data.m] for i in V ] 
    δ⁻ = [ data.δ⁻[i][data.δ⁻[i]. ≤ data.m] for i in V ]
    s = data.nU
-   M = [maximum(data.cost[i, j]) for i in 1:data.n, j in 1:data.n]
    model = build_IP_model(data)
    add_bridge(model, MOI.Bridges.Constraint.SOCtoNonConvexQuadBridge)
 
