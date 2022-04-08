@@ -70,26 +70,42 @@ end
 #------
 
 function run_steiner()
+<<<<<<< HEAD
+=======
+    Random.seed!(1)
+>>>>>>> bbd25035d34c891123655294640cc2c881b57022
     folder = "small/"
 	#folder = "P6E/"
     #INSTANCES = readdir("data/Steiner/"*folder)
     INSTANCES =["p619.stp"] #,"p620.stp","p621.stp"]
 
     @warn "warming up ..."
+<<<<<<< HEAD
     #data = read_data_STP("data/Steiner/small.stp", 0, 1)
     #compare_all_methods(data,0,folder)
+=======
+    data = read_data_STP("data/Steiner/small.stp", 0, 1)
+    compare_all_methods(data,0,folder)
+>>>>>>> bbd25035d34c891123655294640cc2c881b57022
     @warn "now looping over all problems"
 
 	"NOTE: Instances small correspond to the instances format_i from the paper"
     
     #for instance in INSTANCES, nU in [10], Δ in [0.1]
     #for nU in [5,10,20], Δ in [0.1,0.5,1], seed in 1:20, size in 1:2
+<<<<<<< HEAD
     for nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10, size in 1:3
     #for nU in [4], Δ in [0.2], seed in 1, size in 1
         Random.seed!(seed)
         data = create_small_STP(size,Δ,nU)
         #exact(data)
         heuristic_adr(data)
+=======
+    #for nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10, size in 1:3
+    for nU in [4], Δ in [0.2], seed in 2, size in 1
+        data = create_small_STP(size,Δ,nU)
+        res = heuristic_adr(data)
+>>>>>>> bbd25035d34c891123655294640cc2c881b57022
         #compare_all_methods(data,seed,folder)
 
         #flush(stdout)

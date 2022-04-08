@@ -166,13 +166,19 @@ function heuristic_adr(data::Data_STP)
    E = data.E
    # In the following two definitions, we take only the edges with indexes less than m, meaning a single directed edge
    # instead of two opposite ones.
+<<<<<<< HEAD
    δ⁺ = [ E[data.δ⁺[i][data.δ⁺[i] .≤ data.m]] for i in V ] 
    δ⁻ = [ E[data.δ⁻[i][data.δ⁻[i] .≤ data.m]] for i in V ]
+=======
+   δ⁺ = [ data.δ⁺[i][data.δ⁺[i]. ≤ data.m] for i in V ] 
+   δ⁻ = [ data.δ⁻[i][data.δ⁻[i]. ≤ data.m] for i in V ]
+>>>>>>> bbd25035d34c891123655294640cc2c881b57022
    s = data.nU
    model = build_IP_model(data)
    add_bridge(model, MOI.Bridges.Constraint.SOCtoNonConvexQuadBridge)
 
    @variable(model, μ0[V])
+<<<<<<< HEAD
    @variable(model, μ[E, 1:2]) #μ_i,ij
    @variable(model, νfrom[E, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ij u_i^k - μ_i,ij||_2
    @variable(model, νto[E, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ji u_i^k - μ_i,ji||_2
@@ -193,6 +199,39 @@ function heuristic_adr(data::Data_STP)
    end
    @constraint(model, model[:ω] ≥ sum(μ0[i] for i in V))
    @constraint(model, [i in V, k in 1:s], μ0[i] ≥ sum(νfrom[e,k] for e in δ⁺[i]) + sum(νto[e,k] for e in δ⁻[i]))
+=======
+   @variable(model, μ[1:data.n, 1:data.m, 1:2]) #using sparse definitions might be faster?
+   @variable(model, ν[1:data.m] ≥ 0) # used in the epigraphic reformulation of ||μ_i,ij + μ_j,ij||_2
+   @variable(model, νfrom[V, 1:data.m, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ij u_i^k - μ_i,ij||_2
+   @variable(model, νto[V, 1:data.m, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ji u_i^k - μ_i,ji||_2
+
+   # ν_ij ≥ ||μ_i,ij + μ_j,ij||_2
+   for e in 1:data.m
+      vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
+      vector_for_SOCP[1] = ν[e]
+      vector_for_SOCP[2] = μ[data.from[e], e, 1] + μ[data.to[e], e, 1]
+      vector_for_SOCP[3] = μ[data.from[e], e, 2] + μ[data.to[e], e, 2]
+      @constraint(model, vector_for_SOCP in SecondOrderCone())
+   end
+   # ν_i,ij^k ≥ ||x_ij u_i^k - μ_i,ij||_2
+   for i in V, e in δ⁺[i], k in 1:s
+      vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
+      vector_for_SOCP[1] = νfrom[i, e, k]
+      vector_for_SOCP[2:3] = [model[:x][E[e]]*data.U[i][k][q] - μ[i, e, q] for q in 1:2]
+      @constraint(model, vector_for_SOCP in SecondOrderCone())
+   end
+   # ν_i,ji^k ≥ ||x_ji u_i^k - μ_i,ji||_2
+   for i in V, e in δ⁻[i], k in 1:s
+      vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
+      vector_for_SOCP[1] = νto[i, e, k]
+      vector_for_SOCP[2:3] = [model[:x][E[e]]*data.U[i][k][q] + μ[i, e, q] for q in 1:2]
+      @constraint(model, vector_for_SOCP in SecondOrderCone())
+   end
+   @constraint(model, model[:ω] ≥ sum(μ0[i] for i in V) + sum(ν[e] for e in 1:data.m))
+   @constraint(model, [i in V, k in 1:s], μ0[i] ≥ sum(νfrom[i,e,k] for e in δ⁺[i]) + sum(νto[i,e,k] for e in δ⁻[i]))
+
+   @debug model
+>>>>>>> bbd25035d34c891123655294640cc2c881b57022
 
    optimize!(model)
    @info "Solution found of cost $(objective_value(model))"
@@ -243,6 +282,7 @@ function solve_STP_compact(data::Data_STP)
    model = create_model(data, 0)
    @variable(model, x[A], Bin)  # ∀a∈A, true if directed edge a is taken in the arborescence
    @variable(model, f[A, T0] ≥ 0)
+<<<<<<< HEAD
    @variable(model, z[V, cardU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)
    @variable(model, Z[A, cardU] ≥ 0) # used to linearize the maximization over ℓ
    @variable(model, X[A, cardU] ≥ 0) # linearize the product x[a]*Z[A,k,ℓ]
@@ -250,6 +290,15 @@ function solve_STP_compact(data::Data_STP)
 
    @objective(model, Min, ω)
    @constraint(model, [k in cardU], ω ≥ z[r,k])
+=======
+   @variable(model, z[V, 1:data.nU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)
+   @variable(model, Z[A, 1:data.nU] ≥ 0) # used to linearize the maximization over ℓ
+   @variable(model, X[A, 1:data.nU] ≥ 0) # linearize the product x[a]*Z[A,k,ℓ]
+   @variable(model, ω ≥ 0)
+
+   @objective(model, Min, ω)
+   @constraint(model, [k in 1:data.nU], ω ≥ z[r,k])
+>>>>>>> bbd25035d34c891123655294640cc2c881b57022
    @constraint(model, [i in V,k in cardU,ℓ in cardU], z[i,k] ≥ sum(X[a,k] for a in δ⁺[i]))
    @constraint(model, [a in A, k in cardU, ℓ in cardU], x[a] => {X[a,k] ≥ Z[a,k]})
    @constraint(model, [a in A, k in cardU, ℓ in cardU], Z[a,k] ≥ data.cost[a[1],a[2]][k,ℓ] + z[a[2],ℓ])
@@ -266,9 +315,15 @@ function solve_STP_compact(data::Data_STP)
       for a in A
          value(x[a]) > 0.001 && println("$a")
       end
+<<<<<<< HEAD
       println("Nodes values")
       for i in V, k in cardU
          value(z[i,k])>0.001 && println("node $i, position $k: $(value(z[i,k]))")
+=======
+      println("v: ")
+      for i in T0
+         value(v[i]) > 0.001 && println("$i, ")
+>>>>>>> bbd25035d34c891123655294640cc2c881b57022
       end
    end
 
