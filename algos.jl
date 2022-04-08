@@ -173,9 +173,9 @@ function heuristic_adr(data::Data_STP)
    add_bridge(model, MOI.Bridges.Constraint.SOCtoNonConvexQuadBridge)
 
    @variable(model, μ0[V])
-   @variable(model, μ[E, 1:2]) #μ_i,ij
-   @variable(model, νfrom[E, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ij u_i^k - μ_i,ij||_2
-   @variable(model, νto[E, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ji u_i^k - μ_i,ji||_2
+   @variable(model, μ[E, 1:2]) #μ_ij
+   @variable(model, νfrom[E, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ij u_i^k - μ_ij||_2
+   @variable(model, νto[E, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ji u_i^k - μ_ji||_2
 
    # ν_i,ij^k ≥ ||x_ij u_i^k - μ_ij||_2
    for i in V, e in δ⁺[i], k in 1:s
@@ -243,7 +243,6 @@ function solve_STP_compact(data::Data_STP)
    model = create_model(data, 0)
    @variable(model, x[A], Bin)  # ∀a∈A, true if directed edge a is taken in the arborescence
    @variable(model, f[A, T0] ≥ 0)
-<<<<<<< HEAD
    @variable(model, z[V, cardU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)
    @variable(model, Z[A, cardU] ≥ 0) # used to linearize the maximization over ℓ
    @variable(model, X[A, cardU] ≥ 0) # linearize the product x[a]*Z[A,k,ℓ]
@@ -251,15 +250,6 @@ function solve_STP_compact(data::Data_STP)
 
    @objective(model, Min, ω)
    @constraint(model, [k in cardU], ω ≥ z[r,k])
-=======
-   @variable(model, z[V, 1:data.nU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)
-   @variable(model, Z[A, 1:data.nU] ≥ 0) # used to linearize the maximization over ℓ
-   @variable(model, X[A, 1:data.nU] ≥ 0) # linearize the product x[a]*Z[A,k,ℓ]
-   @variable(model, ω ≥ 0)
-
-   @objective(model, Min, ω)
-   @constraint(model, [k in 1:data.nU], ω ≥ z[r,k])
->>>>>>> bbd25035d34c891123655294640cc2c881b57022
    @constraint(model, [i in V,k in cardU,ℓ in cardU], z[i,k] ≥ sum(X[a,k] for a in δ⁺[i]))
    @constraint(model, [a in A, k in cardU, ℓ in cardU], x[a] => {X[a,k] ≥ Z[a,k]})
    @constraint(model, [a in A, k in cardU, ℓ in cardU], Z[a,k] ≥ data.cost[a[1],a[2]][k,ℓ] + z[a[2],ℓ])
@@ -276,15 +266,9 @@ function solve_STP_compact(data::Data_STP)
       for a in A
          value(x[a]) > 0.001 && println("$a")
       end
-<<<<<<< HEAD
       println("Nodes values")
       for i in V, k in cardU
          value(z[i,k])>0.001 && println("node $i, position $k: $(value(z[i,k]))")
-=======
-      println("v: ")
-      for i in T0
-         value(v[i]) > 0.001 && println("$i, ")
->>>>>>> bbd25035d34c891123655294640cc2c881b57022
       end
    end
 
