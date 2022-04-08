@@ -238,7 +238,6 @@ function solve_STP_compact(data::Data_STP)
    V = 1:data.n
    r = T[data.t]
    cardU = 1:data.nU
-   M = sum(sort(collect(values(data.c_max)),rev=true)[1:(n-1)])
 
    model = create_model(data, 0)
    @variable(model, x[A], Bin)  # ∀a∈A, true if directed edge a is taken in the arborescence
@@ -251,7 +250,7 @@ function solve_STP_compact(data::Data_STP)
    @objective(model, Min, ω)
    @constraint(model, [k in cardU], ω ≥ z[r,k])
    @constraint(model, [i in V,k in cardU,ℓ in cardU], z[i,k] ≥ sum(X[a,k] for a in δ⁺[i]))
-   @constraint(model, [a in A, k in cardU, ℓ in cardU], x[a] => {X[a,k] ≥ Z[a,k]})
+   @constraint(model, [a in A, k in cardU, ℓ in cardU], x[a] => {X[a,k] ≥ Z[a,k]}) #Notice big-M could be used instead
    @constraint(model, [a in A, k in cardU, ℓ in cardU], Z[a,k] ≥ data.cost[a[1],a[2]][k,ℓ] + z[a[2],ℓ])
 
    @constraint(model, [t in T0, i in V], sum(f[a, t] for a in δ⁺[i]) - sum(f[a, t] for a in δ⁻[i]) == data.b[t][i])
