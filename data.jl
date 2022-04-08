@@ -7,20 +7,20 @@ struct Data_STP <: Data
   n::Int #number of nodes
   m::Int #number of edges
   g::SimpleGraph  # Underlying graph
-  from::Vector{Int64}
-  to::Vector{Int64}
-  δ⁻::Vector{Vector{Int64}}
-  δ⁺::Vector{Vector{Int64}}
-  t::Int
-  t′::Int # =t-1
-  T::Vector{Int64}
-  b::Matrix{Int64}
+  from::Vector{Int64} #contains the first extremity of every edge
+  to::Vector{Int64} #contains the second extremity of every edge
+  δ⁻::Vector{Vector{Int64}} #contains the indexes of the arcs entering every node
+  δ⁺::Vector{Vector{Int64}} #contains the indexes of the arcs leaving every node
+  t::Int #number of terminals
+  t′::Int # =number of commodities necessary in the multi-flow formulation, equal to t-1
+  T::Vector{Int64} #set of terminals
+  b::Dict #rhs of the multi-commodity flow formulation
   pos::Vector{Vector{Int64}} # nominal coordinates of each node
   U::Vector{Vector{Vector{Float64}}} # coordinates of the points in the uncertainty sets of each node
   nU::Int64 # number of points in each uncertainty set
   Δ::Float64
   E::Vector{Tuple{Int64,Int64}} #List the edges of the ground graph
-  cost::Array{Array{Float64,2},2} # #cost[i,j][u_i,u_j] = distance between u_i ∈ U_i and u_j ∈ U_j
+  cost::Array{Array{Float64,2},2} # #cost[i,j][k,ℓ] = distance between u_i^k ∈ U_i and u_j^ℓ ∈ U_j
   c_center::Dict{Tuple{Int64,Int64},Float64}  # nominal distances, e.g. d(i,j)
   c_max::Dict{Tuple{Int64,Int64},Float64}  # maximum pairwise distances
   c_avg::Dict{Tuple{Int64,Int64},Float64}  # average pairwise distances
@@ -30,7 +30,7 @@ struct Data_STP <: Data
     cost = Array{Array{Float64,2},2}(undef, n, n)
     for i in 1:n
       for j in i:n
-        cost[i, j] = [norm(U[j][l] - U[i][k]) for l in 1:nU, k in 1:nU]
+        cost[i, j] = [norm(U[j][l] - U[i][k]) for k in 1:nU, l in 1:nU]
         cost[j, i] = permutedims(cost[i, j])
       end
     end

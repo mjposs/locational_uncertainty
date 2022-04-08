@@ -5,11 +5,11 @@ using Distances
 using Statistics, Distributions, MultivariateStats
 using Cairo, Compose, Meshes
 
+#ENV["JULIA_DEBUG"] = Main
 
 const Optimizer = "CPLEX"  # ARGS[1]
 if Optimizer == "Gurobi"
     @info "Using Gurobi"
-    ENV["JULIA_DEBUG"] = Main
     # avoids checking the license everytime a model is created
     using Gurobi
     const GUROBI_ENV = Gurobi.Env()
@@ -18,8 +18,8 @@ else
     using CPLEX
 end
 const ϵ = 0.001;
-const TIMELIMIT = 7200;
-const THREADS = 8;
+const TIMELIMIT = 3600;
+const THREADS = 4;
 
 include("data.jl")
 include("generate_data.jl")

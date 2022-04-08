@@ -9,11 +9,11 @@ function create_model(data::Data, output_flag::Int64 = 0)
    else
       set_optimizer(model, CPLEX.Optimizer)
       set_optimizer_attribute(model, "CPX_PARAM_SCRIND", output_flag)
-      set_optimizer_attribute(model, "CPXPARAM_ScreenOutput", output_flag)
-      #set_optimizer_attribute(model,"CPX_PARAM_MIPDISPLAY", 1)
+      set_optimizer_attribute(model,"CPX_PARAM_MIPDISPLAY", 1)
       set_optimizer_attribute(model, "CPX_PARAM_TILIM", TIMELIMIT)
       set_optimizer_attribute(model, "CPX_PARAM_NODEFILEIND", 2)
       set_optimizer_attribute(model, "CPX_PARAM_THREADS", THREADS)
+      #set_optimizer_attribute(model, "CPXPARAM_ScreenOutput", output_flag)
    end
    return model
 end
@@ -24,17 +24,17 @@ function build_IP_model(data::Data_STP)
    n = data.n
    E = data.E
    A = 1:2*data.m
-   T = 1:data.t′
+   T0 = data.T[1:data.t′]
    V = 1:data.n
    model = create_model(data, 0)
    @variable(model, x[E], Bin)  # ∀e∈E, true if edge e is taken in the tree 
-   @variable(model, f[A, T] ≥ 0)
+   @variable(model, f[A, T0] ≥ 0)
    @variable(model, ω ≥ 0)
 
    @objective(model, Min, ω)
-   @constraint(model, [t in T, i in V], sum(f[a, t] for a in data.δ⁺[i]) - sum(f[a, t] for a in data.δ⁻[i]) == data.b[i, t])
-   @constraint(model, [e in 1:length(E), t in T], f[e, t] + f[e+data.m, t] ≤ x[E[e]])
-   @constraint(model, sum(x[e] for e in E) ≤ n - 1) #avoid having too many edges in the first iterations. Does not prevent cycles though. To be improved.
+   @constraint(model, [t in T0, i in V], sum(f[a, t] for a in data.δ⁺[i]) - sum(f[a, t] for a in data.δ⁻[i]) == data.b[t][i])
+   @constraint(model, [e in 1:length(E), t in T0], f[e, t] + f[e+data.m, t] ≤ x[E[e]])
+   @constraint(model, sum(x[e] for e in E) ≤ n - 1)  # avoid having too many edges in the first iterations. Does not prevent cycles though. To be improved.
    @constraint(model, ω ≥ sum(data.c_avg[e] * x[e] for e ∈ E))
    return model
 end
@@ -60,7 +60,7 @@ function c(x_val, data::Data_STP)
    for e in Ex
       add_edge!(g, e[1], e[2])
    end
-   Vx = findall(degree(g) .>= 1)
+   Vx = findall(Graphs.degree(g) .>= 1)
 
    # Compute the true cost of the solution by dynamic programming
    value = zeros(nv(g), data.nU) #value function
@@ -86,17 +86,13 @@ function c(x_val, data::Data_STP)
    u = fill(-1, nv(g))
    fill_u(root, k_max)
 
-   # some nodes may not be covered by current solution
-   u = abs.(u) # arbitrarily select the first point in U[i] for each node that is not covered by x
+   
    @debug begin
+      println("raw u= $u")
       println("x_val= $Ex")
       println("DP value = $(val_max)")
       println("DP value verif = $(sum(data.cost[i,j][u[i],u[j]] for (i,j) in Ex))")
       println("u_DP = $(u[Vx])")
-   end
-
-
-   @debug begin
       # verify the objective value by solving the separation IP
       m = Model(CPLEX.Optimizer)
       @variable(m, y[Vx, 1:nU], Bin)
@@ -111,6 +107,9 @@ function c(x_val, data::Data_STP)
       println("ip value = $(objective_value(m))")
    end
 
+   # some nodes may not be covered by current solution
+   u = abs.(u) # arbitrarily select the first point in U[i] for each node that is not covered by x
+   
    return maximum(value), u
 end
 

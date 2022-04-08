@@ -57,8 +57,8 @@ function exact(data)
          sep_val, u = c(g, data)
       end
 
-      @info "Separation value = $(sep_val), ω = $(ω_val)"
       @debug begin
+         println("Separation value = $(sep_val), ω = $(ω_val)")
          Ex = E[findall([x_val[e] for e in E] .> 1-ϵ)]
          println("x_val = $(Ex)")
          for e in Ex
@@ -156,53 +156,43 @@ end
 
 #-------------------------------------------------------------------------------
 
-"ADR based approach from de Ruiter et al."
+"""
+ADR based approach from de Ruiter et al. Only for Steiner Tree
+"""
 
 function heuristic_adr(data::Data_STP)
    @info "adr heuristic for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
    V = 1:data.n
    E = data.E
-   δ⁺ = [data.δ⁺[i][data.δ⁺[i].≤data.m] for i in V]
-   δ⁻ = [data.δ⁻[i][data.δ⁻[i].≤data.m] for i in V]
+   # In the following two definitions, we take only the edges with indexes less than m, meaning a single directed edge
+   # instead of two opposite ones.
+   δ⁺ = [ E[data.δ⁺[i][data.δ⁺[i] .≤ data.m]] for i in V ] 
+   δ⁻ = [ E[data.δ⁻[i][data.δ⁻[i] .≤ data.m]] for i in V ]
    s = data.nU
-   M = [maximum(data.cost[i, j]) for i in 1:data.n, j in 1:data.n]
    model = build_IP_model(data)
    add_bridge(model, MOI.Bridges.Constraint.SOCtoNonConvexQuadBridge)
 
    @variable(model, μ0[V])
-   @variable(model, μ[1:data.n, 1:data.m, 1:2]) #using sparse definitions might be faster?
-   @variable(model, ν[1:data.m] ≥ 0) # = ||μ_i,ij + μ_j,ij||_2
-   @variable(model, νfrom[V, 1:data.m, 1:s] ≥ 0) # = ||u_i^k - μ_i,ij||_2
-   @variable(model, νto[V, 1:data.m, 1:s] ≥ 0) # = ||u_i^k - μ_i,ji||_2
-   @variable(model, πfrom[V, 1:data.m, 1:s] ≥ 0) # = x_e × νto[i,e,k]
-   @variable(model, πto[V, 1:data.m, 1:s] ≥ 0) # = x_e × νfrom[i,e,k]
+   @variable(model, μ[E, 1:2]) #μ_i,ij
+   @variable(model, νfrom[E, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ij u_i^k - μ_i,ij||_2
+   @variable(model, νto[E, 1:s] ≥ 0) # used in the epigraphic reformulation of ||x_ji u_i^k - μ_i,ji||_2
 
-   for e in 1:data.m
-      vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
-      vector_for_SOCP[1] = ν[e]
-      vector_for_SOCP[2] = μ[data.from[e], e, 1] + μ[data.to[e], e, 1]
-      vector_for_SOCP[3] = μ[data.from[e], e, 2] + μ[data.to[e], e, 2]
-      @constraint(model, vector_for_SOCP in SecondOrderCone())
-   end
+   # ν_i,ij^k ≥ ||x_ij u_i^k - μ_ij||_2
    for i in V, e in δ⁺[i], k in 1:s
       vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
-      vector_for_SOCP[1] = νfrom[i, e, k]
-      vector_for_SOCP[2:3] = [data.U[i][k][q] - μ[i, e, q] for q in 1:2]
+      vector_for_SOCP[1] = νfrom[e, k]
+      vector_for_SOCP[2:3] = [model[:x][e]*data.U[i][k][q] - μ[e, q] for q in 1:2]
       @constraint(model, vector_for_SOCP in SecondOrderCone())
    end
+   # ν_i,ji^k ≥ ||x_ji u_i^k - μ_ji||_2
    for i in V, e in δ⁻[i], k in 1:s
       vector_for_SOCP = Vector{GenericAffExpr{Float64,VariableRef}}(undef, 3)
-      vector_for_SOCP[1] = νto[i, e, k]
-      vector_for_SOCP[2:3] = [data.U[i][k][q] + μ[i, e, q] for q in 1:2]
+      vector_for_SOCP[1] = νto[e, k]
+      vector_for_SOCP[2:3] = [model[:x][e]*data.U[i][k][q] - μ[e, q] for q in 1:2]
       @constraint(model, vector_for_SOCP in SecondOrderCone())
    end
-   @constraint(model, model[:ω] ≥ sum(μ0[i] for i in V) + sum(ν[e] for e in 1:data.m))
-   @constraint(model, [i in V, k in 1:s], μ0[i] ≥ sum(πfrom[i, e, k] for e in δ⁺[i]) + sum(πto[i, e, k] for e in δ⁻[i]))
-   # TODO: it seems that there is an index error below, is it really E[e] and M[e] that are relevant?
-   @constraint(model, [i in V, k in 1:s, e in δ⁺[i]], πfrom[i, e, k] ≥ νfrom[i, e, k] - M[e] * (1 - model[:x][E[e]]))
-   @constraint(model, [i in V, k in 1:s, e in δ⁻[i]], πto[i, e, k] ≥ νto[i, e, k] - M[e] * (1 - model[:x][E[e]]))
-
-   @debug model
+   @constraint(model, model[:ω] ≥ sum(μ0[i] for i in V))
+   @constraint(model, [i in V, k in 1:s], μ0[i] ≥ sum(νfrom[e,k] for e in δ⁺[i]) + sum(νto[e,k] for e in δ⁻[i]))
 
    optimize!(model)
    @info "Solution found of cost $(objective_value(model))"
@@ -214,14 +204,73 @@ function heuristic_adr(data::Data_STP)
    @info "True cost is $truecost"
 
    @debug begin
-      "x $(value.(model[:x]))"
-      "μ0: $(value.(μ0))"
-      "μ: $(value.(μ))"
-      "ν: $(value.(ν))"
-      "νfrom: $(value.(νfrom))"
-      "νto: $(value.(νto))"
-      "πfrom: $(value.(πfrom))"
-      "πto: $(value.(πto))"
+      println("x: $(value.(model[:x]))")
+      println("μ0: $(value.(μ0))")
+      println("μ: $(value.(μ))")
+      println("νfrom: $(value.(νfrom))")
+      println("νto: $(value.(νto))")
+      for i in V, k in 1:s
+         println("node $i, position $k: $(sum([value(νfrom[e,k]) for e in δ⁺[i]]) + sum([value(νto[e,k]) for e in δ⁻[i]]))")
+      end
    end
+   
    return truecost, objective_value(model), MOI.get(model, MOI.RelativeGap())
+end
+
+#-------------------------------------------------------------------------------
+"""
+Compact exact formulation for the Steiner Tree Problem. Relies on a directed formulation instead
+of the non-directed formulation used in the build_IP_model(). Hence, rather to add undirected variables
+to make the formulation compatible with the function exact() above, we consider this formulation
+as a full *solution agorithm*.
+"""
+
+function solve_STP_compact(data::Data_STP)
+   n = data.n
+   m = data.m
+   from = [data.from; data.to] # append the reverse edges
+   to = [data.to; data.from] # append the reverse edges
+   A = [(from[a], to[a]) for a in 1:2m]
+   δ⁺ = [A[data.δ⁺[i]] for i in 1:n]
+   δ⁻ = [A[data.δ⁻[i]] for i in 1:n]
+   T = data.T
+   T0 = T[1:data.t′]
+   V = 1:data.n
+   r = T[data.t]
+   cardU = 1:data.nU
+   M = sum(sort(collect(values(data.c_max)),rev=true)[1:(n-1)])
+
+   model = create_model(data, 0)
+   @variable(model, x[A], Bin)  # ∀a∈A, true if directed edge a is taken in the arborescence
+   @variable(model, f[A, T0] ≥ 0)
+   @variable(model, z[V, cardU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)
+   @variable(model, Z[A, cardU] ≥ 0) # used to linearize the maximization over ℓ
+   @variable(model, X[A, cardU] ≥ 0) # linearize the product x[a]*Z[A,k,ℓ]
+   @variable(model, ω ≥ 0)
+
+   @objective(model, Min, ω)
+   @constraint(model, [k in cardU], ω ≥ z[r,k])
+   @constraint(model, [i in V,k in cardU,ℓ in cardU], z[i,k] ≥ sum(X[a,k] for a in δ⁺[i]))
+   @constraint(model, [a in A, k in cardU, ℓ in cardU], x[a] => {X[a,k] ≥ Z[a,k]})
+   @constraint(model, [a in A, k in cardU, ℓ in cardU], Z[a,k] ≥ data.cost[a[1],a[2]][k,ℓ] + z[a[2],ℓ])
+
+   @constraint(model, [t in T0, i in V], sum(f[a, t] for a in δ⁺[i]) - sum(f[a, t] for a in δ⁻[i]) == data.b[t][i])
+   @constraint(model, [a in A, t in T0], f[a, t] ≤ x[a])
+   optimize!(model)
+
+   @info "Solution found of cost $(objective_value(model))"
+   
+   @debug begin 
+      println("Print solution:")
+      println("Edges")
+      for a in A
+         value(x[a]) > 0.001 && println("$a")
+      end
+      println("Nodes values")
+      for i in V, k in cardU
+         value(z[i,k])>0.001 && println("node $i, position $k: $(value(z[i,k]))")
+      end
+   end
+
+   return objective_value(model), -1,  MOI.get(model, MOI.RelativeGap())
 end
