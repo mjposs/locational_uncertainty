@@ -62,8 +62,11 @@ function compare_all_methods(data::Data,seed,folder::String)
     if typeof(data) == Data_STP
         time = @elapsed res = heuristic_adr(data)
         seed > 0 && printres(time, res, seed, "adr", data, folder)
-        time = @elapsed res = solve_STP_compact(data)
-        seed > 0 && printres(time, res, seed, "compact", data, folder)
+        # Only execute the compact formulation on the small instances
+        if folder != "P6E/"
+            time = @elapsed res = solve_STP_compact(data)
+            seed > 0 && printres(time, res, seed, "compact", data, folder)
+        end
     end
 end
 
@@ -71,26 +74,23 @@ end
 
 function run_steiner()
     folder = "small/"
-	#folder = "P6E/"
+	folder = "P6E/"
     #INSTANCES = readdir("data/Steiner/"*folder)
-    INSTANCES =["p619.stp"] #,"p620.stp","p621.stp"]
+    INSTANCES =["p619.stp","p620.stp","p621.stp"]
 
     @warn "warming up ..."
-    #data = read_data_STP("data/Steiner/small.stp", 0, 1)
-    #compare_all_methods(data,0,folder)
+    data = read_data_STP("data/Steiner/small.stp", 0, 1)
+    compare_all_methods(data,0,folder)
     @warn "now looping over all problems"
 
 	"NOTE: Instances small correspond to the instances format_i from the paper"
     
-    #for instance in INSTANCES, nU in [10], Δ in [0.1]
-    #for nU in [5,10,20], Δ in [0.1,0.5,1], seed in 1:20, size in 1:2
-    for nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10, size in 1:3
-    #for nU in [4], Δ in [0.2], seed in 1, size in 1
+    for instance in INSTANCES, nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10
+    #for nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10, size in 1:3
         Random.seed!(seed)
-        data = create_small_STP(size,Δ,nU)
-        #exact(data)
-        heuristic_adr(data)
-        #compare_all_methods(data,seed,folder)
+        #data = create_small_STP(size,Δ,nU)
+        data = read_data_STP("data/Steiner/"*folder*instance, Δ, nU)
+        compare_all_methods(data,seed,folder)
 
         #flush(stdout)
     end
