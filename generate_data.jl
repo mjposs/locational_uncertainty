@@ -89,10 +89,9 @@ function build_UFLP(n, m, cardI, nU, seed, p)
       end
     end
   end
+  # Next we create a robust instance out of the above deterministic instance
   instance = "random_$(n)_$(m)_$(nU)"
   U = Vector{Vector{Int64}}()
-  dst = [norm(positions[i,:] - positions[j,:]) for i in 1:n, j in 1:n]
-  mean_dst = sum(dst)/(n*(n-1)/2)
   dst = Matrix{Float64}(undef,n,n)
   for i in 1:n
     ds = dijkstra_shortest_paths(g, i)
@@ -116,9 +115,21 @@ function build_UFLP(n, m, cardI, nU, seed, p)
   J = setdiff(1:n,I)
   E = Vector{Tuple{Int64,Int64}}()
   c_center = Dict()
+  # compute the barycenter of each set
+  barycenters = Dict()
+  for i in ∪(I,J)
+    total = Dict()
+    for u in U[i]
+      total[i] = 0.0
+      for v in U[i]
+        total[i] += dst[u,v]
+      end
+      barycenters[i] = argmin(total[i])
+    end
+  end
   for i in I, j in J
     push!(E,(i,j))
-    c_center[(i,j)] = dst[i,j]
+    c_center[(i,j)] = dst[barycenters[i],barycenters[j]]
   end
   #draw(PDF("UFLP.pdf", 16cm, 16cm), gplot(g, positions[:,1], positions[:,2], nodelabel=1:nv(g)))
   #@info I
@@ -374,6 +385,7 @@ function add_dim(box::Vector{Vector{Float64}}, dim::Int, xmin::Vector{Float64}, 
     box[end][dim] = xmax[dim]
   end
 end
+
 function create_box(U0::Vector{Float64}, dims::Vector{Int}, xmin::Vector{Float64}, xmax::Vector{Float64})
   box = Vector{Vector{Float64}}()
   push!(box, U0)

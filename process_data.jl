@@ -1,6 +1,6 @@
 using DelimitedFiles
 
-names = ["\\exact","\\worst","\\hcenter","\\avg","\\adr","\\compact"]
+names = ["\\exact","\\worst","\\hcenter","\\avg","\\cons","\\compact"]
 NU = 1
 MAXVAL = 60
 folder = "small"
@@ -10,9 +10,9 @@ folder = "small"
 #------
 
 function print_costs_STP()
-    algos = ["worst","center","avg","adr"]
+    algos = ["worst","center","avg","cons"]
     #if folder != "small_i"
-    #    global algos = algos[1:2] #remove heur_adr for large instances
+    #    global algos = algos[1:2] #remove heur_cons for large instances
     #end
     datafile = readdlm("res/Steiner/$folder/exact.txt")
     D = sort(unique(datafile[:,2]))
@@ -116,14 +116,14 @@ end
 #------
 
 function print_times_STP()
-    parameters = ["Delta", "nU", "dim"]
-    #parameters = ["Delta"]
+    parameters = ["Delta", "nU"]
+    folder == "small" && push!(parameters, "dim")
     column = Dict()
     column["Delta"] = 2
     column["nU"] = 3
     column["dim"] = 1
-    algos = ["worst","center","avg","adr","exact","compact"]
-    #algos = ["exact","center","worst"]
+    algos = ["worst","center","avg","cons","exact"]
+    folder == "small" && push!(algos, "compact")
     for param in parameters
         col = column[param]
         datafile = readdlm("res/Steiner/$folder/exact.txt")
@@ -193,9 +193,9 @@ print_times_STP()
 #print_times_UFLP()
 
 function print_costs()
-    algos = ["heur_det","heur_dmax","heur_adr"]
+    algos = ["heur_det","heur_dmax","heur_cons"]
     if folder != "small"
-        global algos = algos[1:2] #remove heur_adr for large instances
+        global algos = algos[1:2] #remove heur_cons for large instances
     end
     datafile = readdlm("res/Steiner/"*folder*"/exact.txt")
     D = sort(unique(datafile[:,2]))
@@ -240,7 +240,7 @@ function print_times(type)
     column["Delta"] = 2
     column["nU"] = 3
     column["dim"] = 1
-    #algos = ["exact","heur_det","heur_dmax","heur_adr"]
+    #algos = ["exact","heur_det","heur_dmax","heur_cons"]
     algos = ["exact","heur_det","heur_dmax"]
     for param in parameters
         col = column[param]

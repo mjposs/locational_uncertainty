@@ -61,7 +61,7 @@ function compare_all_methods(data::Data,seed,folder::String)
     end
     if typeof(data) == Data_STP
         time = @elapsed res = heuristic_adr(data)
-        seed > 0 && printres(time, res, seed, "adr", data, folder)
+        seed > 0 && printres(time, res, seed, "cons", data, folder)
         # Only execute the compact formulation on the small instances
         if folder != "P6E/"
             time = @elapsed res = solve_STP_compact(data)
