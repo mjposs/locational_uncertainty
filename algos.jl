@@ -239,7 +239,7 @@ function solve_STP_compact(data::Data_STP)
    r = T[data.t]
    cardU = 1:data.nU
 
-   model = create_model(0)
+   model = create_model()
    @variable(model, x[A], Bin)  # ∀a∈A, true if directed edge a is taken in the arborescence
    @variable(model, f[A, T0] ≥ 0)
    @variable(model, z[V, cardU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)

@@ -20,10 +20,10 @@ end
 const ϵ = 0.001;
 const TIMELIMIT = 7200;
 const THREADS = 4;
+const output_flag = 0
 
-function create_model(output_flag::Int64 = 0)
+function create_model()
     model = Model()
-    set_silent(model)
     if Optimizer == "Gurobi"
        set_optimizer(model, () -> Gurobi.Optimizer(GUROBI_ENV))
        set_optimizer_attribute(model, "OutputFlag", output_flag)

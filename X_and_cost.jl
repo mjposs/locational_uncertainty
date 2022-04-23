@@ -1,23 +1,3 @@
-function create_model(data::Data, output_flag::Int64 = 0)
-   model = Model()
-   if Optimizer == "Gurobi"
-      set_optimizer(model, () -> Gurobi.Optimizer(GUROBI_ENV))
-      set_optimizer_attribute(model, "OutputFlag", output_flag)
-      set_optimizer_attribute(model, "TuneOutput", 1)
-      set_optimizer_attribute(model, "TimeLimit", TIMELIMIT)
-      set_optimizer_attribute(model, "NodefileStart", 0.5)
-   else
-      set_optimizer(model, CPLEX.Optimizer)
-      set_optimizer_attribute(model, "CPX_PARAM_SCRIND", output_flag)
-      set_optimizer_attribute(model,"CPX_PARAM_MIPDISPLAY", 1)
-      set_optimizer_attribute(model, "CPX_PARAM_TILIM", TIMELIMIT)
-      set_optimizer_attribute(model, "CPX_PARAM_NODEFILEIND", 2)
-      set_optimizer_attribute(model, "CPX_PARAM_THREADS", THREADS)
-      #set_optimizer_attribute(model, "CPXPARAM_ScreenOutput", output_flag)
-   end
-   return model
-end
-
 #-------------------------------------------------------------------------------
 
 function build_IP_model(data::Data_STP)
@@ -26,7 +6,7 @@ function build_IP_model(data::Data_STP)
    A = 1:2*data.m
    T0 = data.T[1:data.t′]
    V = 1:data.n
-   model = create_model(0)
+   model = create_model()
    @variable(model, x[E], Bin)  # ∀e∈E, true if edge e is taken in the tree 
    @variable(model, f[A, T0] ≥ 0)
    @variable(model, ω ≥ 0)
@@ -121,7 +101,7 @@ function build_IP_model(data::Data_SPL)
    J = data.J
    nU = data.nU
 
-   model = create_model(data, 1)
+   model = create_model()
    @variable(model, y[J], Bin)
    @variable(model, x[(i, j) in [(i, j) for i in I for j in J]], Bin)
    @variable(model, z[J] ≥ 0)
@@ -197,7 +177,7 @@ function build_IP_model(data::Data_p_center)
    V = 1:n
    nU = data.nU
 
-   model = create_model(data, 1)
+   model = create_model()
    @variable(model, x[(i, j) in E], Bin)
    @variable(model, z[V] ≥ 0)
    @variable(model, ω ≥ 0)
@@ -272,7 +252,7 @@ function build_IP_model(data::Data_clustering)
    V = 1:n
    E = data.E
    n_per_cluster = floor(Int64, n / K)
-   model = create_model(data, 1)
+   model = create_model()
    # x_ij=1 iff i and j are in the same cluster
    @variable(model, x[(i, j) in E], Bin)
    # objective value in the epigraphic formulation
@@ -341,7 +321,7 @@ function build_separation(data::Data_clustering, V::Vector{Int})
    u = Int64.(zeros(n))
    total_obj_value = 0.0
    # the solution graph provides a partition of the vertices into cliques whose worst-case costs can be computed independently
-   separation = create_model(0)
+   separation = create_model()
    # variables indicating which position is chosen for each vertex among its uncertainty set
    @variable(separation, y[i in V, k in 1:nU[i]], Bin)
    # linearization variables: =1 for i, j, ki, kj iff position ki is chosen for vertex i and position kj is chosen for wertex j
@@ -371,7 +351,7 @@ function c(g::SimpleGraph{Int64}, data::Data_interval)
       if (length(V) != floor(Int64, n / data.K))
          @error "The connected component is not the proper size: $(length(V))"
       end
-      separation = create_model(data)
+      separation = create_model()
       # variables indicating which position is chosen for each vertex among its uncertainty set
       @variable(separation, data.lb[i, dim] <= u[i in V, dim in D] <= data.ub[i, dim])
 
