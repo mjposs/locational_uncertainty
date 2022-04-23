@@ -8,7 +8,6 @@ function exact(data)
    # build the initial relaxed IP where there is no cut to compute the worst-case cost of the solution tree
    model = build_IP_model(data)
    n = data.n
-   V = 1:n
    E = data.E
 
    # callback function that finds the worst-case cost of the current solution and builds the corresponding "lazy" cut
@@ -32,7 +31,7 @@ function exact(data)
 
          # get the worst-case position of all the vertices by solving the separation problem
          sep_val, u = c(x_val, data)
-      elseif typeof(data) == Data_UFLP
+      elseif typeof(data) == Data_SPL
          "UFLP"
          y_val = Dict()
          for j in data.J
@@ -82,6 +81,7 @@ function exact(data)
    ncuts = 0
 
    optimize!(model)
+   
    @info "Solution found of cost $(value(model[:ω])), generating $ncuts cuts"
    for e in E
       value.(model[:x][e]) .> ϵ && @debug "Edge from $(e[1]) to $(e[2])"
@@ -99,7 +99,7 @@ Classical approach ignoring uncertainty and taking a given deterministic cost fo
 
 function heuristic_deterministic(data, cost::Dict{Tuple{Int64,Int64},Float64})
    typeof(data) == Data_STP && @info "deterministic solution for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
-   typeof(data) == Data_UFLP && @info "deterministic solution for $(data.instance) with |I|=$(length(data.I)), |J|=$(length(data.J)), p=$(data.p)"
+   typeof(data) == Data_SPL && @info "deterministic solution for $(data.instance) with |I|=$(length(data.I)), |J|=$(length(data.J)), p=$(data.p)"
    typeof(data) == Data_clustering && @info "deterministic solution for $(data.instance) with  $(data.nU) extreme points"
 
    # initialize the model
@@ -120,7 +120,7 @@ function heuristic_deterministic(data, cost::Dict{Tuple{Int64,Int64},Float64})
    if typeof(data) == Data_STP
       "STP"
       truecost, u = c(x_val, data)
-   elseif typeof(data) == Data_UFLP
+   elseif typeof(data) == Data_SPL
       "UFLP"
       y_val = Dict()
       for j in data.J
@@ -239,7 +239,7 @@ function solve_STP_compact(data::Data_STP)
    r = T[data.t]
    cardU = 1:data.nU
 
-   model = create_model(data, 0)
+   model = create_model(0)
    @variable(model, x[A], Bin)  # ∀a∈A, true if directed edge a is taken in the arborescence
    @variable(model, f[A, T0] ≥ 0)
    @variable(model, z[V, cardU] ≥ 0) # z[i,k] worst-case cost of DP at label (i,k)

@@ -51,7 +51,7 @@ end
 
 #-------------------------------------------------------------------------------
 
-struct Data_UFLP <: Data
+struct Data_SPL <: Data
   instance::String #name of the instance
   n::Int #number of nodes
   m::Int #number of edges
@@ -68,7 +68,7 @@ struct Data_UFLP <: Data
   c_avg::Dict{Tuple{Int64,Int64},Float64}  # average pairwise distances
   c_max_from_J::Dict{Tuple{Int64,Int64},Vector{Float64}}
 
-  function Data_UFLP(instance, n, m, g, I, J, nU, U, p, E, c_center)
+  function Data_SPL(instance, n, m, g, I, J, nU, U, p, E, c_center)
     # cost in UFLP is given by Euclidean distances
     cost = Array{Array{Float64,2},2}(undef, n, n)
     for i in 1:n
@@ -93,7 +93,6 @@ struct Data_UFLP <: Data
     for e in E
       c_avg[e] = mean(cost[e[1], e[2]])
     end
-
     return new(instance, n, m, g, I, J, nU, U, p, E, cost, c_center, c_max, c_avg, c_max_from_J)
   end
 end
@@ -217,6 +216,7 @@ struct Data_p_center <: Data
     return new(instance, n, dim, nU, U, K, E, cost, c_center, c_max, c_avg, c_max_from)
   end
 end
+
 """
   Data_interval
 """

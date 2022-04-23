@@ -2,12 +2,9 @@
 # Generation of instances along the lines of M. Daskin. Genrand2: A random network generator.
 # Department of Industrial Engineering and Management Sciences, Northwestern University,"""
 # Evanston, IL, USA, 1993
-function build_UFLP(n, m, cardI, nU, seed, p)
-  Random.seed!(seed)
+function build_SPL(n, m, cardI, nU, p)
   positions = rand(n,2)
   # 1- ensures connectivity by adding a min-cost spanning tree, favorize short edges to emulate transportation networks
-  sources = [i for i in 1:n for j in (i+1):n]
-  destinations = [j for i in 1:n for j in (i+1):n]
   g_MST = complete_graph(n)
   dst = [norm(positions[i,:] - positions[j,:])^2 for i in 1:n, j in 1:n]
   MST = kruskal_mst(g_MST, dst)
@@ -120,12 +117,12 @@ function build_UFLP(n, m, cardI, nU, seed, p)
   for i in ∪(I,J)
     total = Dict()
     for u in U[i]
-      total[i] = 0.0
+      total[u] = 0.0
       for v in U[i]
-        total[i] += dst[u,v]
+        total[u] += dst[u,v]
       end
-      barycenters[i] = argmin(total[i])
     end
+    barycenters[i] = argmin(total)
   end
   for i in I, j in J
     push!(E,(i,j))
@@ -133,7 +130,7 @@ function build_UFLP(n, m, cardI, nU, seed, p)
   end
   #draw(PDF("UFLP.pdf", 16cm, 16cm), gplot(g, positions[:,1], positions[:,2], nodelabel=1:nv(g)))
   #@info I
-  return Data_UFLP(instance, n, m, g, I, J, nU, U, p, E, c_center)
+  return Data_SPL(instance, n, m, g, I, J, nU, U, p, E, c_center)
 end
 
 #-------------------------------------------------------------------------------

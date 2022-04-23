@@ -16,18 +16,18 @@ function printres(time, res, seed, algo, data::Data_STP, folder::String)
     close(f)
 end
 
-function printres(time, res, seed, algo, data::Data_UFLP)
-    f = open("res/UFLP/$(algo).txt","a")
+function printres(time, res, seed, algo, data::Data_SPL, folder::String)
+    f = open("res/SPL/$(algo).txt","a")
     if algo[1] == 'P'
         algo = algo[4:end]
     end
-    s = string("$(data.instance) $(data.n) $(data.m) $(data.nU) $(length(data.I)) $(@sprintf("%.2f",time))  $(@sprintf("%.2f",res[1]))  $(@sprintf("%.2f",res[2]))  $(@sprintf("%.2f",res[3]))  $(seed)\n")
+    s = string("$(data.instance) $(data.n) $(data.m) $(length(data.I)) $(data.nU) $(length(data.I)) $(data.p) $(@sprintf("%.2f",time))  $(@sprintf("%.2f",res[1]))  $(@sprintf("%.2f",res[2]))  $(@sprintf("%.2f",res[3]))  $(seed)\n")
     write(f,s)
     println(s)
     close(f)
 end
 
-function printres(time, res, seed, algo, data::Data_clustering)
+function printres(time, res, seed, algo, data::Data_clustering, folder::String)
     f = open("res/clustering/$(algo).txt","a")
     if algo[1] == 'P'
         algo = algo[4:end]
@@ -39,7 +39,7 @@ function printres(time, res, seed, algo, data::Data_clustering)
 end
 
 
-function printres(time, res, seed, algo, data::Data_p_center)
+function printres(time, res, seed, algo, data::Data_p_center, folder::String)
     f = open("res/pcenter/$(algo).txt","a")
     if algo[1] == 'P'
         algo = algo[4:end]
@@ -73,7 +73,7 @@ end
 #------
 
 function run_steiner()
-    folder = "small/"
+    #folder = "small/"
 	folder = "P6E/"
     #INSTANCES = readdir("data/Steiner/"*folder)
     INSTANCES =["p619.stp","p620.stp","p621.stp"]
@@ -85,7 +85,7 @@ function run_steiner()
 
 	"NOTE: Instances small correspond to the instances format_i from the paper"
     
-    for instance in INSTANCES, nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10
+    for instance in INSTANCES, nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:5
     #for nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10, size in 1:3
         Random.seed!(seed)
         #data = create_small_STP(size,Δ,nU)
@@ -98,24 +98,26 @@ end
 
 #------
 
-function run_UFLP()
+function run_SPL()
 	@info "Warming up ..."
-	n, m, cardI, nU, p, seed = 10, 20, 1, 1, 1, 1
-	data = build_UFLP(n, m, cardI, nU, p, seed)
-    compare_all_methods(data)
+	n, m, cardI, nU, p, seed = 10, 15, 1, 1, 1, 0
+    Random.seed!(0)
+	data = build_SPL(n, m, cardI, nU, p)
+    compare_all_methods(data,seed,"")
 	@info "... finished!"
 
 	n, cardI, p = 80, 15, 3
 	maxU = Int64(floor(n/cardI))
-	for seed in 1:1, m in [n, round(n*1.5), round(n*2)], nU in [3,4,5]
+	for n in [100,150,200], cardI in [round(n/6),round(n/5),round(n/4)], m in [n, round(n*1.5), round(n*2)], nU in [3,4,5], p in [3,4,5], seed in 1:2
+        Random.seed!(seed)
 		@warn "($n, $m, $cardI, $nU, $seed, $p)"
-		data = build_UFLP(n, m, cardI, nU, seed, p)
+		data = build_SPL(n, m, cardI, nU, p)
 
-        compare_all_methods(data)
+        compare_all_methods(data,seed,"")
 	end
 end
 
-function run_clustering(n_per_cluster::Int64)
+function run_synthetic_clustering(n_per_cluster::Int64)
     U = read_cars()
     data_cars =  Data_clustering("cars", length(U), 2, [length(U[i]) for i in 1:length(U)], U, 4);
     compare_all_methods(data_cars)
@@ -164,12 +166,12 @@ end
 
 function run_all()
     run_steiner();
-    run_UFLP();
-    run_synthetic_clustering(6);
+    run_SPL();
+    run_synthetic_clustering(6)
     run_interval();
 end
 
 #------
 
-# run_UFLP()
-run_steiner()
+run_SPL()
+# run_steiner()

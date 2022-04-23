@@ -18,8 +18,29 @@ else
     using CPLEX
 end
 const ϵ = 0.001;
-const TIMELIMIT = 3600;
+const TIMELIMIT = 7200;
 const THREADS = 4;
+
+function create_model(output_flag::Int64 = 0)
+    model = Model()
+    set_silent(model)
+    if Optimizer == "Gurobi"
+       set_optimizer(model, () -> Gurobi.Optimizer(GUROBI_ENV))
+       set_optimizer_attribute(model, "OutputFlag", output_flag)
+       set_optimizer_attribute(model, "TuneOutput", 1)
+       set_optimizer_attribute(model, "TimeLimit", TIMELIMIT)
+       set_optimizer_attribute(model, "NodefileStart", 0.5)
+    else
+       set_optimizer(model, CPLEX.Optimizer)       
+       set_optimizer_attribute(model, "CPX_PARAM_SCRIND", output_flag)
+       set_optimizer_attribute(model,"CPX_PARAM_MIPDISPLAY", 0)
+       set_optimizer_attribute(model, "CPX_PARAM_TILIM", TIMELIMIT)
+       set_optimizer_attribute(model, "CPX_PARAM_NODEFILEIND", 2)
+       set_optimizer_attribute(model, "CPX_PARAM_THREADS", THREADS)
+       set_optimizer_attribute(model, "CPXPARAM_ScreenOutput", output_flag)
+    end
+    return model
+ end
 
 include("data.jl")
 include("generate_data.jl")

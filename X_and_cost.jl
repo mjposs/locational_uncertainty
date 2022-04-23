@@ -26,7 +26,7 @@ function build_IP_model(data::Data_STP)
    A = 1:2*data.m
    T0 = data.T[1:data.t′]
    V = 1:data.n
-   model = create_model(data, 0)
+   model = create_model(0)
    @variable(model, x[E], Bin)  # ∀e∈E, true if edge e is taken in the tree 
    @variable(model, f[A, T0] ≥ 0)
    @variable(model, ω ≥ 0)
@@ -116,7 +116,7 @@ end
 
 #-------------------------------------------------------------------------------
 
-function build_IP_model(data::Data_UFLP)
+function build_IP_model(data::Data_SPL)
    I = data.I
    J = data.J
    nU = data.nU
@@ -133,14 +133,14 @@ function build_IP_model(data::Data_UFLP)
    @constraint(model, sum(y[j] for j in J) ≤ data.p)
    @constraint(model, ω ≥ sum(z))
    @constraint(model, [j in J, k in 1:nU], z[j] ≥ sum(data.c_max_from_J[j,i][k] * x[(i,j)] for i in I))
-
+   
    return model
 end
 
 
 #-------------------------------------------------------------------------------
 
-function c(x_val, y_val, data::Data_UFLP)
+function c(x_val, y_val, data::Data_SPL)
    I = data.I
    J = data.J
    Jx = []
@@ -341,7 +341,7 @@ function build_separation(data::Data_clustering, V::Vector{Int})
    u = Int64.(zeros(n))
    total_obj_value = 0.0
    # the solution graph provides a partition of the vertices into cliques whose worst-case costs can be computed independently
-   separation = create_model(data, 0)
+   separation = create_model(0)
    # variables indicating which position is chosen for each vertex among its uncertainty set
    @variable(separation, y[i in V, k in 1:nU[i]], Bin)
    # linearization variables: =1 for i, j, ki, kj iff position ki is chosen for vertex i and position kj is chosen for wertex j
