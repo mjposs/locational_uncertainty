@@ -21,7 +21,18 @@ function printres(time, res, seed, algo, data::Data_SPL, folder::String)
     if algo[1] == 'P'
         algo = algo[4:end]
     end
-    s = string("$(data.instance) $(data.n) $(data.m) $(length(data.I)) $(data.nU) $(length(data.I)) $(data.p) $(@sprintf("%.2f",time))  $(@sprintf("%.2f",res[1]))  $(@sprintf("%.2f",res[2]))  $(@sprintf("%.2f",res[3]))  $(seed)\n")
+    n = data.n
+    m = data.m
+    I = length(data.I)
+    relative_m = ""
+    m == n && (relative_m = "n")
+    m == round(n*1.5) && (relative_m = "1.5n")
+    m == round(n*2) && (relative_m = "2n")
+    relative_I = ""
+    I == round(n/6) && (relative_I = "n/6")
+    I == round(n/5) && (relative_I = "n/5")
+    I == round(n/4) && (relative_I = "n/4")
+    s = string("$(data.instance) $(data.n) $relative_m $(data.nU) $relative_I $(data.p) $(@sprintf("%.2f",time))  $(@sprintf("%.2f",res[1]))  $(@sprintf("%.2f",res[2]))  $(@sprintf("%.2f",res[3]))  $(seed)\n")
     write(f,s)
     println(s)
     close(f)

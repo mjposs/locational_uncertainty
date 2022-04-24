@@ -130,7 +130,8 @@ function build_SPL(n, m, cardI, nU, p)
   end
   #draw(PDF("UFLP.pdf", 16cm, 16cm), gplot(g, positions[:,1], positions[:,2], nodelabel=1:nv(g)))
   #@info I
-  return Data_SPL(instance, n, m, g, I, J, nU, U, p, E, c_center)
+  #show(stdout, "text/plain", c_center)
+  return Data_SPL(instance, n, m, g, I, J, nU, U, p, E, c_center,dst)
 end
 
 #-------------------------------------------------------------------------------

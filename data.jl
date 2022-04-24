@@ -68,12 +68,12 @@ struct Data_SPL <: Data
   c_avg::Dict{Tuple{Int64,Int64},Float64}  # average pairwise distances
   c_max_from_J::Dict{Tuple{Int64,Int64},Vector{Float64}}
 
-  function Data_SPL(instance, n, m, g, I, J, nU, U, p, E, c_center)
-    # cost in UFLP is given by Euclidean distances
+  function Data_SPL(instance, n, m, g, I, J, nU, U, p, E, c_center, dst)
+    # cost in SPL is given by graph induced distances
     cost = Array{Array{Float64,2},2}(undef, n, n)
     for i in 1:n
       for j in i:n
-        cost[i, j] = [norm(U[j][l] - U[i][k]) for l in 1:nU, k in 1:nU]
+        cost[i, j] = [ dst[U[i][k],U[j][l]] for k in 1:length(U[i]), l in 1:length(U[j]) ]
         cost[j, i] = permutedims(cost[i, j])
       end
     end

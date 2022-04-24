@@ -77,7 +77,8 @@ function exact(data)
       end
    end
 
-   MOI.set(model, MOI.LazyConstraintCallback(), callback)
+   # Don't use lazy cut callback for the compact formulation of the SPL model
+   typeof(data) != Data_SPL && MOI.set(model, MOI.LazyConstraintCallback(), callback)
    ncuts = 0
 
    optimize!(model)
