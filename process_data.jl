@@ -56,16 +56,16 @@ end
 #------
 
 function print_costs_SPL()
-    MAXVAL = 20
+    MAXVAL = 15
     algos = ["worst","center","avg"]
     datafile = readdlm("res/SPL/exact.txt")
     nseed = maximum(datafile[:,end])
-    parameters = ["nU", "m", "n", "I", "p"]
+    parameters = ["nU", "n"]
     column = Dict()
     column["n"] = 2
     column["m"] = 3
-    column["I"] = 4
-    column["nU"] = 5
+    column["nU"] = 4
+    column["I"] = 5
     column["p"] = 6
     
     values = Vector{Vector{Float64}}(undef,3)
@@ -88,12 +88,12 @@ function print_costs_SPL()
             end
             for value in allvalues, i in 1:length(algos)
                 number = findlast(val[i] .<= value)
-                if number !== nothing res[i] = [ res[i] ; value 100*number/nseed ]
+                if number != nothing res[i] = [ res[i] ; value 100*number/length(indexes) ]
                 else res[i] = [ res[i] ; value 0 ]
                 end
             end
             for i in 1:length(algos)
-                writedlm("res/SPL/$(algos[i])_$(param)_$(index).txt", res[i])
+                writedlm("res/SPL/$(algos[i])_$(param)_$(replace(string(index),"/"=>"")).txt", res[i])
             end
         end
     end
@@ -144,9 +144,10 @@ function print_times_SPL()
     column = Dict()
     column["n"] = 2
     column["m"] = 3
-    column["I"] = 4
-    column["nU"] = 5
+    column["nU"] = 4
+    column["I"] = 5
     column["p"] = 6
+    algos = ["worst","center","avg","exact"]
 
     # Only exact solution times are relevant for this application
     datafile = readdlm("res/SPL/exact.txt", Any)
@@ -155,14 +156,17 @@ function print_times_SPL()
         col = column[param]
         allvalues = sort(unique(datafile[:,col]))
         table = ["x"; allvalues]
-        newcol = Vector{Any}(undef,1)
-        newcol[1] = "exact"
-        for val in allvalues
-            rows_to_sum = findall(datafile[:,col] .== val)
-            mean = sum(datafile[rows_to_sum, 7])/length(rows_to_sum)
-            push!(newcol, mean)
+        for algo in algos
+            datafile = readdlm("res/SPL/$algo.txt")
+            newcol = Vector{Any}(undef,1)
+            newcol[1] = algo
+            for val in allvalues
+                rows_to_sum = findall(datafile[:,col] .== val)
+                mean = sum(datafile[rows_to_sum, 7])/length(rows_to_sum)
+                push!(newcol, mean)
+            end
+            table = [table newcol]
         end
-        table = [table newcol]
         writedlm("res/SPL/times_$(param).txt", table, '\t')
     end
 end

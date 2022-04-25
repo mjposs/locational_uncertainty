@@ -29,9 +29,9 @@ function printres(time, res, seed, algo, data::Data_SPL, folder::String)
     m == round(n*1.5) && (relative_m = "1.5n")
     m == round(n*2) && (relative_m = "2n")
     relative_I = ""
+    I == round(n/8) && (relative_I = "n/8")
+    I == round(n/7) && (relative_I = "n/7")
     I == round(n/6) && (relative_I = "n/6")
-    I == round(n/5) && (relative_I = "n/5")
-    I == round(n/4) && (relative_I = "n/4")
     s = string("$(data.instance) $(data.n) $relative_m $(data.nU) $relative_I $(data.p) $(@sprintf("%.2f",time))  $(@sprintf("%.2f",res[1]))  $(@sprintf("%.2f",res[2]))  $(@sprintf("%.2f",res[3]))  $(seed)\n")
     write(f,s)
     println(s)
@@ -119,7 +119,7 @@ function run_SPL()
 
 	n, cardI, p = 80, 15, 3
 	maxU = Int64(floor(n/cardI))
-	for n in [100,150,200], cardI in [round(n/6),round(n/5),round(n/4)], m in [n, round(n*1.5), round(n*2)], nU in [3,4,5], p in [3,4,5], seed in 1:2
+	for n in [200,400,600], cardI in [round(n/8),round(n/7),round(n/6)], m in [n, round(n*1.5), round(n*2)], nU in [2,3,4], p in [2,4,6], seed in 1:2
         Random.seed!(seed)
 		@warn "($n, $m, $cardI, $nU, $seed, $p)"
 		data = build_SPL(n, m, cardI, nU, p)
