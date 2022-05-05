@@ -31,7 +31,7 @@ function create_model()
        set_optimizer_attribute(model, "TimeLimit", TIMELIMIT)
        set_optimizer_attribute(model, "NodefileStart", 0.5)
     else
-       set_optimizer(model, CPLEX.Optimizer)       
+        model = Model()     
        set_optimizer_attribute(model, "CPX_PARAM_SCRIND", output_flag)
        set_optimizer_attribute(model,"CPX_PARAM_MIPDISPLAY", 0)
        set_optimizer_attribute(model, "CPX_PARAM_TILIM", TIMELIMIT)

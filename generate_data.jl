@@ -112,21 +112,19 @@ function build_SPL(n, m, cardI, nU, p)
   J = setdiff(1:n,I)
   E = Vector{Tuple{Int64,Int64}}()
   c_center = Dict()
-  # compute the barycenter of each set
-  barycenters = Dict()
+  # compute the median of each set
+  medians = Dict()
   for i in ∪(I,J)
     total = Dict()
-    for u in U[i]
-      total[u] = 0.0
-      for v in U[i]
-        total[u] += dst[u,v]
-      end
+    for u in 1:n
+      total[u] = sum(dst[u,U[i]])
     end
-    barycenters[i] = argmin(total)
+    medians[i] = argmin(total)
   end
+  
   for i in I, j in J
     push!(E,(i,j))
-    c_center[(i,j)] = dst[barycenters[i],barycenters[j]]
+    c_center[(i,j)] = dst[medians[i],medians[j]]
   end
   #draw(PDF("UFLP.pdf", 16cm, 16cm), gplot(g, positions[:,1], positions[:,2], nodelabel=1:nv(g)))
   #@info I
