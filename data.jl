@@ -24,8 +24,10 @@ struct Data_STP <: Data
   c_center::Dict{Tuple{Int64,Int64},Float64}  # nominal distances, e.g. d(i,j)
   c_max::Dict{Tuple{Int64,Int64},Float64}  # maximum pairwise distances
   c_avg::Dict{Tuple{Int64,Int64},Float64}  # average pairwise distances
+  seed::Int # seed used to generate the instance
+  radii::Vector{Float64} # radii randomly generated used to construct uncertainty sets
 
-  function Data_STP(instance, n, m, g, from, to, δ⁻, δ⁺, t, t′, T, b, pos, U, nU, Δ, E, c_center)
+  function Data_STP(instance, n, m, g, from, to, δ⁻, δ⁺, t, t′, T, b, pos, U, nU, Δ, E, c_center,seed,radii)
     # cost in Steiner trees is given by Euclidean distances
     cost = Array{Array{Float64,2},2}(undef, n, n)
     for i in 1:n
@@ -45,7 +47,7 @@ struct Data_STP <: Data
       c_avg[e] = mean(cost[e[1], e[2]])
     end
 
-    return new(instance, n, m, g, from, to, δ⁻, δ⁺, t, t′, T, b, pos, U, nU, Δ, E, cost, c_center, c_max, c_avg)
+    return new(instance, n, m, g, from, to, δ⁻, δ⁺, t, t′, T, b, pos, U, nU, Δ, E, cost, c_center, c_max, c_avg, seed, radii)
   end
 end
 

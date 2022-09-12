@@ -134,7 +134,7 @@ end
 
 #-------------------------------------------------------------------------------
 
-function read_data_STP(instance,Δ,nU)
+function read_data_STP(instance,Δ,nU,seed)
   datafile = readdlm(instance)
   line = findfirst(datafile.=="Nodes")[1]
   n = datafile[line, 2]
@@ -203,8 +203,10 @@ function read_data_STP(instance,Δ,nU)
   distances = [norm(pos[i]-pos[j]) for i in 1:n, j in 1:n]
   distance_mean = sum(distances)/(n*(n-1))
   U = Vector{Vector{Vector{Float64}}}()
+  radii = []
   for i in 1:n
     radius = rand() * Δ * distance_mean
+    push!(radii,radius)
     push!(U, Vector{Vector{Float64}}())
     for k in 1:nU
       push!(U[i],round.([pos[i][1]+radius*cos(2π*k/nU),pos[i][2]+radius*sin(2π*k/nU)]))
@@ -215,7 +217,7 @@ function read_data_STP(instance,Δ,nU)
   for e in E
     c_center[e] = distances[e[1],e[2]]
   end
-  return Data_STP(instance,n,m,g,from,to,δ⁻,δ⁺,t,t′,T,b,pos,U,nU,Δ,E,c_center)
+  return Data_STP(instance,n,m,g,from,to,δ⁻,δ⁺,t,t′,T,b,pos,U,nU,Δ,E,c_center,seed,radii)
 end
 
 #-------------------------------------------------------------------------------

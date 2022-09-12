@@ -1,4 +1,34 @@
 """
+The following export the solutions for the STP problem
+"""
+function export_solution_STP(model,data,type_heuristic)
+   E = data.E
+   tree = []
+   nodes = []
+   for e in E
+      if value.(model[:x][e]) .> ϵ
+         e = collect(e)
+         for i in e
+            !in(i,nodes) && push!(nodes,i)
+         end
+         push!(tree,e)
+      end
+   end
+   nodes = sort(nodes)
+   output = fill(0.0,length(nodes)+length(tree),4)
+   for index in 1:length(nodes)
+      output[index,1] = nodes[index]
+      output[index,2] = round(data.radii[nodes[index]],digits=2)
+      output[index,3:4] = data.pos[nodes[index]]'
+   end
+   for index in 1:length(tree)
+      output[length(nodes)+index,1:2] = tree[index]
+   end
+   outputfile = "res/solution_$(data.instance[end-7:end-4])_$(data.nU)_$(data.Δ)_$(data.seed)_$type_heuristic.txt"
+   writedlm(outputfile,output)
+end
+
+"""
 exact(data)
 
 Cutting-plane algorithm to solve the problem exactly.
@@ -87,6 +117,7 @@ function exact(data)
    for e in E
       value.(model[:x][e]) .> ϵ && @debug "Edge from $(e[1]) to $(e[2])"
    end
+   typeof(data) == Data_STP && export_solution_STP(model,data,"exact")
    return objective_value(model), ncuts, MOI.get(model, MOI.RelativeGap())
 end
 
@@ -98,7 +129,7 @@ heuristic_deterministic
 Classical approach ignoring uncertainty and taking a given deterministic cost for each edge. This cost will typically reflect etiher the maximum, the average or the distance between the centers of the uncertainty sets.
 """
 
-function heuristic_deterministic(data, cost::Dict{Tuple{Int64,Int64},Float64})
+function heuristic_deterministic(data, cost::Dict{Tuple{Int64,Int64},Float64}, type_heuristic::String)
    typeof(data) == Data_STP && @info "deterministic solution for $(data.instance) with Δ=$(data.Δ) and $(data.nU) extreme points"
    typeof(data) == Data_SPL && @info "deterministic solution for $(data.instance) with |I|=$(length(data.I)), |J|=$(length(data.J)), p=$(data.p)"
    typeof(data) == Data_clustering && @info "deterministic solution for $(data.instance) with  $(data.nU) extreme points"
@@ -152,6 +183,7 @@ function heuristic_deterministic(data, cost::Dict{Tuple{Int64,Int64},Float64})
    for e in E
       x_val[e] > ϵ && @debug "$(e[1]) - $(e[2])"
    end
+   typeof(data) == Data_STP && export_solution_STP(model,data,type_heuristic)
    return truecost, objective_value(model), MOI.get(model, MOI.RelativeGap())
 end
 

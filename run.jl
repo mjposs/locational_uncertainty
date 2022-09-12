@@ -67,7 +67,7 @@ function compare_all_methods(data::Data,seed,folder::String)
     seed > 0 && printres(time_exact, res_exact, seed, "exact", data, folder)
     for costs in [("worst", data.c_max), ("center",data.c_center), ("avg",data.c_avg)]
         @info "Solve deterministic counterpart using $(costs[1])"
-        time = @elapsed res = heuristic_deterministic(data, costs[2])
+        time = @elapsed res = heuristic_deterministic(data, costs[2], costs[1])
         seed > 0 && printres(time, res, seed, costs[1], data, folder)
     end
     if typeof(data) == Data_STP
@@ -90,7 +90,7 @@ function run_steiner()
     INSTANCES =["p619.stp","p620.stp","p621.stp"]
 
     @warn "warming up ..."
-    data = read_data_STP("data/Steiner/small.stp", 0, 1)
+    data = read_data_STP("data/Steiner/small.stp", 0, 1, 0)
     compare_all_methods(data,0,folder)
     @warn "now looping over all problems"
 
@@ -100,7 +100,7 @@ function run_steiner()
     #for nU in [4,8,12], Δ in [0.2,0.4,0.6], seed in 1:10, size in 1:3
         Random.seed!(seed)
         #data = create_small_STP(size,Δ,nU)
-        data = read_data_STP("data/Steiner/"*folder*instance, Δ, nU)
+        data = read_data_STP("data/Steiner/"*folder*instance, Δ, nU, seed)
         compare_all_methods(data,seed,folder)
 
         #flush(stdout)
@@ -184,5 +184,5 @@ end
 
 #------
 
-run_SPL()
-# run_steiner()
+# run_SPL()
+run_steiner()
